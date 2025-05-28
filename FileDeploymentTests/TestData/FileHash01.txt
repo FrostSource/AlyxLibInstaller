@@ -1,0 +1,3 @@
+File hashing for GetFileHashTest()
+Do not change the contents of this file.
+If the contents are changed the GetFileHashTest method must be updated with the new hash.

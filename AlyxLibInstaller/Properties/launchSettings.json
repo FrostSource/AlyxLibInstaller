@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "AlyxLibInstaller (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "AlyxLibInstaller (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

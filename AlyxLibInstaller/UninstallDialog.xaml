@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="AlyxLibInstaller.UninstallDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:AlyxLibInstaller"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <StackPanel VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+        <!-- Content body -->
+        <TextBlock>
+            <Bold>Remove All:</Bold>
+            <LineBreak/>
+            Removes all AlyxLib related files from your addon.
+            <LineBreak/>
+            <LineBreak/>
+            <Bold>SymLinks Only:</Bold> 
+            <LineBreak/>
+            Removes only symbolic links pointing to AlyxLib files.
+        </TextBlock>
+
+        <Expander
+            IsExpanded="False"
+            ExpandDirection="Down"
+            VerticalAlignment="Top"
+            Header="The following files will be deleted">
+            <ScrollViewer x:Name="ExpanderControl" Content="" />
+        </Expander>
+    </StackPanel>
+
+</Page>
