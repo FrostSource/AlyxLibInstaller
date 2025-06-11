@@ -11,5 +11,7 @@ namespace FileDeployment
     {
         //[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public VariableString Destination { get; set; }
+
+        public bool SkipIfDestinationDoesNotExist => false;
     }
 }

@@ -1,4 +1,5 @@
 ﻿using FileDeployment.Exceptions;
+using FileDeployment.Logging;
 using System.Text.Json.Serialization;
 
 namespace FileDeployment.Operations
@@ -16,10 +17,44 @@ namespace FileDeployment.Operations
             //if (Destination == null)
             //    throw new FileOperationException("Destination must be set for CopyFileOperation");
 
-            // Source and Destination are VariableString, so they should be automatically formatted here
-            Console.WriteLine($"Copying {Source} to {Destination}");
+            //try
+            //{
 
-            //File.Copy(Source, Destination, true);
+
+            //EnsureDestinationWritable(Destination);
+
+            // Ensure the parent directory of the destination exists
+            FileUtils.CreateParentDirectories(Destination);
+
+            // Source and Destination are VariableString, so they should be automatically formatted here
+            //Console.WriteLine($"Copying {Source} to {Destination}");
+            File.Copy(Source, Destination, true);
+                //sourceStream.CopyTo(destinationStream);
+            Log(LogEntry.Success(this, $"Copied file {Source} to {Destination} successfully"));
+
+            //}
+            //catch (Exception ex)
+            //{
+            //    Log(new(this, "Failed to copy file", ex));
+            //}
+
+
+        }
+
+        public override bool DeployedFileIsUnchanged()
+        {
+            try
+            {
+                MemoryStream memoryStream = new MemoryStream();
+                using FileStream fileStream = File.OpenRead(Source);
+                fileStream.Seek(0, SeekOrigin.Begin);
+                fileStream.CopyTo(memoryStream);
+                return FileUtils.FilesAreEqual(fileStream, Destination);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         //public CopyFileOperation(string source, string destination)

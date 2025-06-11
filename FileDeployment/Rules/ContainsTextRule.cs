@@ -2,18 +2,22 @@
 namespace FileDeployment.Rules
 {
     [ValidationRuleAlias("ContainsText")]
-    class ContainsTextRule : ValidationRule, IValidationRuleWithValue
+    public class ContainsTextRule : ValidationRule, IValidationRuleWithValue
     {
 
         public string Value { get; set; } = string.Empty;
 
-        protected override bool ValidateInternal(string? path)
+        protected override ValidationResult ValidateInternal(string path)
         {
-            if (!File.Exists(path))
-                return false;
+            // Let exception be logged
+            //if (!File.Exists(path))
+            //    return false;
 
             var fileText = File.ReadAllText(path);
-            return fileText.Contains(Value);
+            if (!fileText.Contains(Value))
+                return $"File '{path}' does not contain the specified text: '{Value}'";
+
+            return true;
         }
     }
 }

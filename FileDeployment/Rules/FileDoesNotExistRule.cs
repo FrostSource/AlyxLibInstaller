@@ -2,18 +2,21 @@
 namespace FileDeployment.Rules
 {
     [ValidationRuleAlias("FileDoesNotExist")]
-    class FileDoesNotExistRule : ValidationRule
+    public class FileDoesNotExistRule : ValidationRule
     {
-        //public override ValidationType Type => ValidationType.FileDoesNotExist;
-        protected override bool ValidateInternal(string? path)
+        protected override ValidationResult ValidateInternal(string path)
         {
-            var result = !File.Exists(path) && !Directory.Exists(path);
+            if (File.Exists(path))
+                return $"File '{path}' exists.";
+            
+            if (Directory.Exists(path))
+                return $"Directory '{path}' exists.";
 
             // remove after testing
-            Console.WriteLine($"Validating file does not exist: {path} => {result}");
+            //Console.WriteLine($"Validating file does not exist: {path} => {result}");
 
             // Should directory existance return false?
-            return result;
+            return true;
         }
     }
 }
