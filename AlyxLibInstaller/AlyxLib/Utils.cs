@@ -27,4 +27,26 @@ internal static class Utils
             return BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
         }
     }
+
+    public static string FindLongestValidPath(string candidate)
+    {
+        // Clean candidate (remove newlines and trim whitespace)
+        candidate = candidate.Replace("\r\n", "").Replace("\n", "").Trim();
+
+        // Check if the full string is a valid path first
+        if (Directory.Exists(candidate) || File.Exists(candidate))
+            return candidate;
+
+        // If not, start from the full string and work backwards
+        for (int endPos = candidate.Length; endPos > 2; endPos--)
+        {
+            string currentCandidate = candidate.Substring(0, endPos).Trim();
+
+            if (Directory.Exists(currentCandidate) || File.Exists(currentCandidate))
+                return currentCandidate;
+        }
+
+        return null; // no valid path found
+    }
+
 }

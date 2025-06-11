@@ -21,7 +21,7 @@ public sealed class Settings
     private bool firstTimeRunning = true;
     public bool FirstTimeRunning { get => firstTimeRunning; set { firstTimeRunning = value; SettingsManager.Save(); } }
 
-    private bool verboseConsole = true;
+    private bool verboseConsole = false;
     public bool VerboseConsole { get => verboseConsole; set { verboseConsole = value; SettingsManager.Save(); } }
 
     private string gitHubVersionFileUrl = @"https://raw.githubusercontent.com/FrostSource/alyxlib/refs/heads/main/version.json";
@@ -35,8 +35,6 @@ public sealed class Settings
 
 internal sealed class SettingsManager
 {
-    private const string SettingsFolderName = "AlyxLibInstaller";
-
     /// <summary>
     /// The global settings singleton.
     /// </summary>
@@ -50,15 +48,7 @@ internal sealed class SettingsManager
         ReadyToSave = true;
     }
 
-    public static string Path
-    {
-        get
-        {
-            var dir = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-            return System.IO.Path.Combine(dir, SettingsFolderName, "settings.json");
-        }
-    }
-
+    public static string Path => PathHelper.SettingsFilePath;
 
     public static void Save()
     {

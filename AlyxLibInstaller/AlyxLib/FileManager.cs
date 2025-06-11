@@ -1,4 +1,5 @@
-﻿using LibGit2Sharp;
+﻿using FileDeployment;
+using LibGit2Sharp;
 using Microsoft.UI.Xaml.Controls;
 using Source2HelperLibrary;
 using System;
@@ -82,7 +83,159 @@ public class FileManager
         return CheckFileList(vscriptFiles, addon);
     }
 
+    public bool TryGetTemplateFile(string templatePath, out string template)
+    {
+        templatePath = Path.Combine("templates", templatePath);
+        var fullTemplatePath = Path.Combine(manager.AlyxLibPath.FullName, templatePath);
+        if (File.Exists(fullTemplatePath))
+        {
+            template = File.ReadAllText(fullTemplatePath);
+            return true;
+        }
+        else
+        {
+            App.DebugConsoleError($"{templatePath} template file not found");
+            template = "";
+            return false;
+        }
+    }
+
+    public bool TryGetDeploymentManifest(LocalAddon addon, AddonConfig options, out DeploymentManifest manifest, out AlyxLibFileDeploymentLogger logger)
+    {
+        try
+        {
+            manifest = FileDeployment.DeploymentManifest.LoadFromFile(
+                Path.Combine(manager.AlyxLibPath.FullName, "deployment_manifest.json")
+                );
+        }
+        catch (FileNotFoundException ex)
+        {
+            App.DebugConsoleError($"Deployment manifest file not found: {ex.Message}");
+            manifest = null;
+            logger = null;
+            return false;
+        }
+
+        logger = new AlyxLibFileDeploymentLogger(addon);
+        manifest.Logger = logger;
+        manifest.ReplaceExistingSymlinks = true;
+
+        manifest.AddVariable("AlyxLib", () => manager.AlyxLibPath.FullName);
+        manifest.AddVariable("AddonContent", () => addon.ContentPath);
+        manifest.AddVariable("AddonGame", () => addon.GamePath);
+        manifest.AddVariable("ModName", () => options.ModFolderName);
+        manifest.AddVariable("AddonFolderName", () => addon.Name);
+
+        return true;
+    }
+
     public void InstallAlyxLib(LocalAddon addon, AddonConfig options)
+    {
+        if (!TryGetDeploymentManifest(addon, options, out var manifest, out var logger)) { return; }
+
+        App.DebugConsoleMessage($"Installing AlyxLib for {addon.Name}...");
+
+        bool failureOccurred = false;
+        DeploymentResult result;
+
+        if (options.VScriptInstalled)
+        {
+            App.DebugConsoleMessage("Installing VScript files...");
+            if (!manifest.TryDeployCategory("vscript", out result))
+            {
+                failureOccurred = true;
+                App.DebugConsoleError("Failed to deploy VScript files. Check the deployment manifest for errors.");
+            }
+
+            switch (options.EditorType)
+            {
+                case ScriptEditor.VisualStudioCode:
+                    App.DebugConsoleMessage("Installing Visual Studio Code settings...");
+                    if (!manifest.TryDeployCategory("editor-vscode", out result))
+                    {
+                        failureOccurred = true;
+                        App.DebugConsoleError("Failed to deploy Visual Studio Code settings. Check the deployment manifest for errors.");
+                    }
+                    break;
+                case ScriptEditor.None:
+                    App.DebugConsoleVerbose("User chose not to install any script editor settings");
+                    break;
+            }
+        }
+
+        if (options.PanoramaInstalled)
+        {
+            App.DebugConsoleMessage("Installing panorama files...");
+            if (!manifest.TryDeployCategory("panorama", out result))
+            {
+                failureOccurred = true;
+                App.DebugConsoleError("Failed to deploy panorama files. Check the deployment manifest for errors.");
+            }
+        }
+
+        if (options.SoundEventInstalled)
+        {
+            App.DebugConsoleMessage("Installing sound event files...");
+            if (!manifest.TryDeployCategory("sounds", out result))
+            {
+                failureOccurred = true;
+                App.DebugConsoleError("Failed to deploy sound event files. Check the deployment manifest for errors.");
+            }
+        }
+
+        if (options.GitInstalled)
+        {
+            App.DebugConsoleMessage("Initializing Git repository...");
+
+            try
+            {
+                // Check if the repository is already initialized
+                if (Repository.IsValid(addon.ContentPath))
+                {
+                    App.DebugConsoleVerbose("Git repository already initialized");
+                }
+                else
+                {
+                    Repository.Init(addon.ContentPath);
+                    App.DebugConsoleVerbose("Initialized new Git repository");
+                }
+
+                if (TryGetTemplateFile("gitignore.txt", out var gitignore))
+                {
+                    WriteAllText(addon.ContentFile(".gitignore"), gitignore);
+                    App.DebugConsoleVerbose("Created .gitignore file");
+                }
+                else
+                {
+                    failureOccurred = true;
+                    App.DebugConsoleError("Gitignore template file not found");
+                }
+            }
+            catch (Exception ex)
+            {
+                failureOccurred = true;
+                App.DebugConsoleError($"Failed to initialize Git repository: {ex.Message}");
+            }
+        }
+
+        // Post-installation tasks
+
+        App.DebugConsoleVerbose("Saving AlyxLib config...");
+        AlyxLibHelpers.SaveAddonConfig(addon, options);
+
+        failureOccurred |= logger.HasExceptions;
+
+        if (failureOccurred)
+        {
+            App.DebugConsoleError($"AlyxLib installation encountered errors. Check log for details {FileLogger.LogFilePath}");
+        }
+        else
+        {
+            App.DebugConsoleSuccess("AlyxLib installation complete!");
+        }
+    }
+
+    public void InstallAlyxLibOld(LocalAddon addon, AddonConfig options)
     {
         if (manager.IssueFound()) return;
 
@@ -142,23 +295,6 @@ public class FileManager
                         File.Copy(fromFullPath, toFullPath);
                     }
                 }
-            }
-        }
-
-        bool TryGetTemplateFile(string templatePath, out string template)
-        {
-            templatePath = Path.Combine("templates", templatePath);
-            var fullTemplatePath = Path.Combine(manager.AlyxLibPath.FullName, templatePath);
-            if (File.Exists(fullTemplatePath))
-            {
-                template = File.ReadAllText(fullTemplatePath);
-                return true;
-            }
-            else
-            {
-                App.DebugConsoleError($"{templatePath} template file not found");
-                template = "";
-                return false;
             }
         }
 
@@ -438,6 +574,27 @@ public class FileManager
         //});
 
         App.DebugConsoleSuccess("AlyxLib installation complete!");
+    }
+
+    public void UninstallAlyxLibForUpload(LocalAddon addon, AddonConfig options)
+    {
+        if (!TryGetDeploymentManifest(addon, options, out var manifest, out var logger)) { return; }
+
+        App.DebugConsoleMessage($"Removing AlyxLib files in {addon.Name} for workshop upload...");
+
+        if (!manifest.TryUndeployCategory("vscript", out var result))
+        {
+            App.DebugConsoleError($"AlyxLib removal encountered errors. Check log for details {FileLogger.LogFilePath}");
+            return;
+        }
+
+        if (result.FailedOperations > 0 || result.SuccessfulOperations == 0)
+        {
+            App.DebugConsoleWarning($"Some files could not be removed. Check log for details {FileLogger.LogFilePath}");
+            return;
+        }
+
+        App.DebugConsoleSuccess("Necessary files have been removed! You may now upload your addon to the workshop.");
     }
 
     public static void WriteAllText(string path, string contents)

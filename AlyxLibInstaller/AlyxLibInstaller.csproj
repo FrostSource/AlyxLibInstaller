@@ -19,16 +19,17 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <Title>AlyxLib Installer</Title>
     <PackageIcon>alyxlib_installer_icon.png</PackageIcon>
+    <ApplicationIcon>alyxlib.ico</ApplicationIcon>
     
   </PropertyGroup>
   <ItemGroup>
     <None Remove="AlyxLibInstallOption.xaml" />
-    <None Remove="Assets\AlyxLibInstallerIcon.png" />
     <None Remove="SimpleTextDialog.xaml" />
     <None Remove="UninstallDialog.xaml" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="alyxlib.ico" />
     <Content Include="Assets\SplashScreen.scale-200.png" />
     <Content Include="Assets\LockScreenLogo.scale-200.png" />
     <Content Include="Assets\Square150x150Logo.scale-200.png" />
@@ -63,11 +64,12 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Source2HelperLibrary\Source2HelperLibrary\Source2HelperLibrary.csproj" />
+    <ProjectReference Include="..\FileDeployment\FileDeployment.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Content Update="Assets\AlyxLibInstallerIcon.png">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Content>
+    <Page Update="PrivilegeWarningDialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="SimpleTextDialog.xaml">

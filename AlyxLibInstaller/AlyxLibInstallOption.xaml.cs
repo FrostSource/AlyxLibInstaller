@@ -35,6 +35,39 @@ namespace AlyxLibInstaller
             Click?.Invoke(this, e);
         }
 
+        // Add this event handler for the Border's PointerPressed event
+        private void RootBorder_PointerPressed(object sender, PointerRoutedEventArgs e)
+        {
+            // Prevent toggling if the original source is the CheckBox itself or its children
+            if (e.OriginalSource is FrameworkElement fe &&
+                (fe == CheckBoxControl || IsDescendantOf(fe, CheckBoxControl)))
+            {
+                return;
+            }
+
+            // Toggle the checkbox
+            if (CheckBoxControl.IsChecked == true)
+                CheckBoxControl.IsChecked = false;
+            else
+                CheckBoxControl.IsChecked = true;
+
+            // Raise the Click event
+            Click?.Invoke(this, new RoutedEventArgs());
+        }
+
+        // Helper to check if an element is a descendant of another
+        private bool IsDescendantOf(FrameworkElement child, FrameworkElement parent)
+        {
+            DependencyObject current = child;
+            while (current != null)
+            {
+                if (current == parent)
+                    return true;
+                current = VisualTreeHelper.GetParent(current);
+            }
+            return false;
+        }
+
         public bool? IsChecked
         {
             get { return CheckBoxControl.IsChecked; }

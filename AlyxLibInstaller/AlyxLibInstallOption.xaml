@@ -8,27 +8,29 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <StackPanel Orientation="Vertical" VerticalAlignment="Center">
-        <CheckBox x:Name="CheckBoxControl" Content="{x:Bind CheckboxContent, Mode=OneWay}"
-                  ToolTipService.ToolTip="{x:Bind TooltipText, Mode=OneWay}" />
+    <!-- Make the whole area clickable by using a Border with PointerPressed -->
+    <Border Background="Transparent" PointerPressed="RootBorder_PointerPressed">
+        <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+            <CheckBox x:Name="CheckBoxControl" Content="{x:Bind CheckboxContent, Mode=OneWay}"
+                      ToolTipService.ToolTip="{x:Bind TooltipText, Mode=OneWay}" />
 
-        <!-- Grid for better layout control of the description text -->
-        <Grid Margin="30,0,0,0">
-            <Grid.ColumnDefinitions>
-                <!-- Single column to control width and enable wrapping -->
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
+            <!-- Grid for better layout control of the description text -->
+            <Grid Margin="30,0,0,0">
+                <Grid.ColumnDefinitions>
+                    <!-- Single column to control width and enable wrapping -->
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
 
-            <TextBlock x:Name="DescriptionTextBlock" Text="{x:Bind DescriptionText, Mode=OneWay}"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                       FontSize="12"
-                       TextWrapping="Wrap" />
-        </Grid>
+                <TextBlock x:Name="DescriptionTextBlock" Text="{x:Bind DescriptionText, Mode=OneWay}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           FontSize="12"
+                           TextWrapping="Wrap" />
+            </Grid>
 
-
-        <InfoBar x:Name="OptionInfoBar"
-                IsOpen="False"
-                Severity="Warning"
-                Message="" />
-    </StackPanel>
+            <InfoBar x:Name="OptionInfoBar"
+                    IsOpen="False"
+                    Severity="Warning"
+                    Message="" />
+        </StackPanel>
+    </Border>
 </UserControl>

@@ -35,17 +35,25 @@ public partial class App : Application
     {
         this.InitializeComponent();
 
+        // Ensure log file is created at app startup and mark session start
+        FileLogger.LogSessionStart();
+
         this.UnhandledException += (sender, e) =>
         {
-            DebugConsoleError($"Unhandled Exception: {e.Message}");
-            DebugConsoleError($"Stack Trace: {e.Exception.StackTrace}");
+            // Log full exception with stack trace to file
+            FileLogger.Log(e.Exception);
+            DebugConsoleError($"Unhandled Exception: {e.Message}\nSee log for details: {FileLogger.LogFilePath}");
             e.Handled = true; // Prevent the application from crashing
         };
 
         AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
         {
             if (e.ExceptionObject is Exception ex)
-                DebugConsoleError($"Unhandled Exception: {ex}");
+            {
+                // Log full exception with stack trace to file
+                FileLogger.Log(ex);
+                DebugConsoleError($"Unhandled Exception: {ex.Message}\nSee log for details: {FileLogger.LogFilePath}");
+            }
         };
     }
 
@@ -61,7 +69,22 @@ public partial class App : Application
         MainWindow.Activate();
         MainWindow.ExtendsContentIntoTitleBar = true;
 
-        DebugConsoleMessage($"Settings at: {SettingsManager.Path}");
+        DebugConsoleMessage($"Settings file: {SettingsManager.Path}");
+        DebugConsoleMessage($"Log file: {FileLogger.LogFilePath}");
+
+        // NEW: Check for command-line arguments
+        string[] cmdArgs = Environment.GetCommandLineArgs();
+        // Expecting: [0]=exe path, [1]=addon path (optional)
+        if (cmdArgs.Length > 1)
+        {
+            string addonPath = cmdArgs[1];
+            // Try to extract addon name from path (assuming folder name is addon name)
+            string addonName = System.IO.Path.GetFileName(addonPath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+            if (!string.IsNullOrEmpty(addonName))
+            {
+                MainWindow.RequestedAddonName = addonName;
+            }
+        }
     }
 
     /// <summary>
