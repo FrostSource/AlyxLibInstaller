@@ -1,12 +1,15 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using FileDeployment;
+﻿using FileDeployment;
+using FileDeployment.Operations;
+using FileDeploymentTests;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Runtime.Versioning;
+using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
-
-using FileDeployment.Operations;
 
 namespace FileDeployment.Tests;
 
@@ -64,33 +67,47 @@ public class DeploymentManifestTests
         ""vscript"": [
           {
             ""type"": ""symlink"",
+            ""description"": ""AlyxLib library symlink"",
             ""source"": ""{AlyxLib}/scripts/vscripts/alyxlib"",
             ""destination"": ""{AddonContent}/scripts/vscripts/alyxlib""
           },
           {
             ""type"": ""symlink"",
+            ""description"": ""gameinit.lua symlink"",
             ""source"": ""{AlyxLib}/scripts/vscripts/game/gameinit.lua"",
             ""destination"": ""{AddonContent}/scripts/vscripts/game/gameinit.lua""
           },
           {
             ""type"": ""copy"",
+            ""description"": ""Addon main init.lua file"",
             ""source"": ""{AlyxLib}/templates/script_init_main.txt"",
             ""destination"": ""{AddonContent}/scripts/vscripts/{ModName}/init.lua""
           },
           {
             ""type"": ""template"",
+            ""description"": ""Workshop mod init file"",
             ""source"": ""{AlyxLib}/templates/script_init_workshop.txt"",
             ""destination"": ""{AddonContent}/scripts/vscripts/mods/init/0000000000.lua"",
-            ""replacements"": ""{ModName}""
+            ""replacements"": ""{ModName}"",
+            ""rules"": [
+              {
+                ""type"": ""FileNameDoesNotExist"",
+                ""target"": ""destination"",
+                ""value"": ""rx:^\\d+\\.lua$"",
+                ""description"": ""Possible workshop init file already exists so a new one will not be created.""
+              }
+            ]
           },
           {
             ""type"": ""template"",
+            ""description"": ""Local mod init file"",
             ""source"": ""{AlyxLib}/templates/script_init_local.txt"",
             ""destination"": ""{AddonContent}/scripts/vscripts/mods/init/{AddonFolderName}.lua"",
             ""replacements"": ""{ModName}""
           },
           {
             ""type"": ""symlink"",
+            ""description"": ""Scripts symlink in addon game folder"",
             ""source"": ""{AddonContent}/scripts"",
             ""destination"": ""{AddonGame}/scripts""
           }
@@ -99,18 +116,28 @@ public class DeploymentManifestTests
         ""editor-vscode"": [
           {
             ""type"": ""symlink"",
+            ""description"": ""AlyxLib snippets symlink for VSCode"",
             ""source"": ""{AlyxLib}/.vscode/alyxlib.code-snippets"",
-            ""destination"": ""{AddonContent}/.vscode/alyxlib.code-snippets""
+            ""destination"": ""{AddonContent}/.vscode/alyxlib.code-snippets"",
           },
           {
             ""type"": ""symlink"",
+            ""description"": ""VScript snippets symlink for VSCode"",
             ""source"": ""{AlyxLib}/.vscode/vlua_snippets.code-snippets"",
             ""destination"": ""{AddonContent}/.vscode/vlua_snippets.code-snippets""
           },
           {
             ""type"": ""copy"",
+            ""description"": ""AlyxLib VSCode settings file"",
             ""source"": ""{AlyxLib}/templates/vscode_settings.txt"",
-            ""destination"": ""{AddonContent}/.vscode/settings.json""
+            ""destination"": ""{AddonContent}/.vscode/settings.json"",
+            ""rules"": [
+              {
+                ""type"": ""FileDoesNotExist"",
+                ""target"": ""destination"",
+                ""description"": ""VSCode settings file already exists, so it will not be replaced""
+              }
+            ]
           }
         ],
 
@@ -130,45 +157,39 @@ public class DeploymentManifestTests
         ""sounds"": [
           {
             ""type"": ""copy"",
+            ""description"": ""Addon soundevents file"",
             ""source"": ""{AlyxLib}/templates/soundevents.txt"",
-            ""destination"": ""{AddonContent}/soundevents/{AddonFolderName}_soundevents.vsndevts"",
-            ""rules"": [
-              {
-                ""type"": ""FileDoesNotExist"",
-                ""target"": ""destination""
-              }
-            ]
+            ""destination"": ""{AddonContent}/soundevents/{AddonFolderName}_soundevents.vsndevts""
           },
           {
             ""type"": ""delete"",
+            ""description"": ""Delete default soundevents file"",
             ""source"": ""{AddonContent}/soundevents/addon_template_soundevents.vsndevts"",
             ""rules"": [
               {
                 ""type"": ""Hash"",
-                ""value"": ""768e1cb207576e41b92718e0559f876095618a23f7a116a829a7b5d578591eeb""
+                ""value"": ""768e1cb207576e41b92718e0559f876095618a23f7a116a829a7b5d578591eeb"",
+                ""description"": ""Default soundevents file has been modified, so it won't be deleted""
               }
             ]
           },
 
           {
             ""type"": ""template"",
+            ""description"": ""Addon soundevents manifest file"",
             ""source"": ""{AlyxLib}/templates/resource_manifest.txt"",
             ""destination"": ""{AddonContent}/resourcemanifests/{AddonFolderName}_addon_resources.vrman"",
-            ""replacements"": ""{AddonFolderName}"",
-            ""rules"": [
-              {
-                ""type"": ""FileDoesNotExist"",
-                ""target"": ""destination""
-              }
-            ]
+            ""replacements"": ""{AddonFolderName}""
           },
           {
             ""type"": ""delete"",
-            ""source"": ""{AddonContent}/soundevents/addon_template_soundevents.vsndevts"",
+            ""description"": ""Delete default soundevents manifest file"",
+            ""source"": ""{AddonContent}/resourcemanifests/addon_template_addon_resources.vrman"",
             ""rules"": [
               {
                 ""type"": ""Hash"",
-                ""value"": ""495d7301afadbed3eece2d16250608b4e4c9529fd3d34a8f93fbf61479c6ab13""
+                ""value"": ""495d7301afadbed3eece2d16250608b4e4c9529fd3d34a8f93fbf61479c6ab13"",
+                ""description"": ""Default soundevents manifest file has been modified, so it won't be deleted""
               }
             ]
           }
@@ -177,6 +198,23 @@ public class DeploymentManifestTests
       }
     }
     ";
+
+// These 2 rules were removed because ReplaceExistingFiles is false for AlyxLib so they won't be overwritten
+//""rules"": [
+//    {
+//    ""type"": ""FileDoesNotExist"",
+//    ""target"": ""destination"",
+//    ""description"": ""Addon soundevents file already exists, so it will not be replaced""
+//    }
+//]
+
+//""rules"": [
+//    {
+//    ""type"": ""FileDoesNotExist"",
+//    ""target"": ""destination"",
+//    ""description"": ""Addon resource manifest file already exists, so it will not be replaced"",
+//    }
+//]
 
     //private const string SampleJson = @"
     //{
@@ -291,13 +329,23 @@ public class DeploymentManifestTests
         
     }
 
+    [SupportedOSPlatform("windows")]
     [TestMethod()]
     public void FakeDeploymentTest()
     {
+
+
         var manifest = DeploymentManifest.LoadFromString(SampleJson);
-        manifest.AddVariable("AlyxLib", () => "C://AlyxLib");
-        manifest.AddVariable("AddonContent", () => "C://content/my_addon");
-        manifest.AddVariable("AddonGame", () => "C://game/my_addon");
+        //manifest.Logger = new Logging.ConsoleLogger();
+        //manifest.AddVariable("AlyxLib", () => "C://AlyxLib");
+        //manifest.AddVariable("AddonContent", () => "C://content/my_addon");
+        //manifest.AddVariable("AddonGame", () => "C://game/my_addon");
+
+        manifest.ReplaceExistingSymlinks = true;
+        manifest.Logger = new AlyxLibFileDeploymentLogger();
+        manifest.AddVariable("AlyxLib", () => @"C:\AlyxLibInstallerTest\alyxlib");
+        manifest.AddVariable("AddonContent", () => @"C:\AlyxLibInstallerTest\content");
+        manifest.AddVariable("AddonGame", () => @"C:\AlyxLibInstallerTest\game");
         manifest.AddVariable("ModName", () => "MY_MOD");
         manifest.AddVariable("AddonFolderName", () => "my_addon");
 
