@@ -10,8 +10,8 @@ namespace FileDeployment.Converters
         public override ValidationRule Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             string typeName;
-            string? value = null;
-            RuleTarget target = RuleTarget.Source;
+            //string? value = null;
+            //RuleTarget target = RuleTarget.Source;
             ValidationRule rule;
 
             if (reader.TokenType == JsonTokenType.String)

@@ -1,22 +1,10 @@
-﻿using AlyxLibInstaller.AlyxLib;
-using AlyxLibInstaller.AlyxLib;
-using LibGit2Sharp;
-using LibGit2Sharp;
-using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls;
-using Source2HelperLibrary;
-using System;
+﻿using Source2HelperLibrary;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.IO.Compression;
-using System.Linq;
-using System.Linq;
-using System.Net.Http;
 using System.Net.Http;
 using System.Text.Json;
-using System.Threading.Tasks;
 using System.Threading.Tasks;
 
 namespace AlyxLibInstaller.AlyxLib;

@@ -53,6 +53,16 @@ namespace AlyxLibInstaller
             WriteLine(logEntry);
         }
 
+        public static void Log(Exception exception, string message)
+        {
+            if (exception == null)
+                return;
+
+            var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            var logEntry = $"[{timestamp}] [EXCEPTION] {message} : {FormatException(exception)}";
+            WriteLine(logEntry);
+        }
+
         /// <summary>
         /// Writes a session separator with timestamp to the log file.
         /// </summary>
@@ -141,7 +151,7 @@ namespace AlyxLibInstaller
                     files.RemoveAt(0);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Optionally log cleanup errors
             }

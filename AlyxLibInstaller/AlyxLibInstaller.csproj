@@ -17,9 +17,14 @@
     <WindowsPackageType>None</WindowsPackageType>
     <WinUISDKReferences>false</WinUISDKReferences>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    
+    <TrimMode>partial</TrimMode>
     <Title>AlyxLib Installer</Title>
-    <PackageIcon>alyxlib_installer_icon.png</PackageIcon>
+    <PackageIcon></PackageIcon>
     <ApplicationIcon>alyxlib.ico</ApplicationIcon>
+    <Nullable>enable</Nullable>
     
   </PropertyGroup>
   <ItemGroup>
@@ -27,6 +32,17 @@
     <None Remove="SimpleTextDialog.xaml" />
     <None Remove="UninstallDialog.xaml" />
   </ItemGroup>
+
+  <!--
+    For removing unneeded files.
+  -->
+  <Target Name="RemoveFoldersWithMuiFiles" AfterTargets="Build">
+    <ItemGroup>
+      <RemovingFiles Include="$(OutDir)*\*.mui" Exclude="$(OutDir)en-us\*.mui" />
+      <RemovingFolders Include="@(RemovingFiles->'%(RootDir)%(Directory)')" />
+    </ItemGroup>
+    <RemoveDir Directories="@(RemovingFolders)" />
+  </Target>
 
   <ItemGroup>
     <Content Include="alyxlib.ico" />
@@ -55,12 +71,6 @@
   -->
   <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <ProjectCapability Include="Msix" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="F:\Projects\Half-Life Alyx\AlyxLib\alyxlib_installer_icon.png">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Source2HelperLibrary\Source2HelperLibrary\Source2HelperLibrary.csproj" />

@@ -1,40 +1,24 @@
-#nullable enable
-
 using AlyxLibInstaller.AlyxLib;
-using LibGit2Sharp;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Documents;
-using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using Microsoft.UI.Xaml.Navigation;
+using Microsoft.Win32;
 using Semver;
 using Source2HelperLibrary;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using System.Security.Principal;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
 using Windows.Storage;
-using Windows.Storage.AccessCache;
 using Windows.Storage.Pickers;
 using Windows.System;
 using Windows.UI;
-using WinUIEx.Messaging;
 using static AlyxLibInstaller.App;
-using Microsoft.Win32;
-using System.Reflection;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -417,6 +401,10 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
                 if (!silent)
                     DebugConsoleSuccess($"AlyxLib path set to {path}");
             }
+            else
+            {
+                DebugConsoleWarning($"Attempted to set invalid AlyxLib path: {path}");
+            }
         }
         AlyxLibNotFoundInfoBar.IsOpen = !found;
         UpdateEnabledControlsBasedOnCorrectSettings();
@@ -547,6 +535,8 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
 
             AddonModNameTextBox.PlaceholderText = CurrentAddon.Name;
 
+            DebugConsoleInfo($"Addon selected: {addonName}");
+
             return true;
         }
         else
@@ -612,6 +602,10 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
                 SetAlyxLibPath(null);
                 ShowWarningPopup($"{folder.Path} is not a valid AlyxLib folder!");
             }
+        }
+        else
+        {
+            DebugConsoleVerboseWarning("User cancelled AlyxLib folder selection. Download aborted.");
         }
 
     }
@@ -967,8 +961,10 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         {
             var (versionComparison, localVersion, remoteVersion) = await AlyxLibInstance.VersionManager.CompareVersions();
             DebugConsoleVerbose($"Version diff: {versionComparison}");
+            FileLogger.Log("User checked for AlyxLib updates.");
             if (versionComparison > 0)
             {
+                DebugConsoleInfo($"Update available: {localVersion} -> {remoteVersion}");
                 var result = await GetPopupResult($"New version available!\nv{localVersion} -> v{remoteVersion}", "Update Available", "Download", "Cancel");
                 if (result == ContentDialogResult.Primary)
                 {
@@ -977,10 +973,12 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
             }
             else if (versionComparison == 0)
             {
+                DebugConsoleInfo("AlyxLib is up to date.");
                 ShowSimplePopup($"You are up to date!\nv{localVersion}", "Up To Date");
             }
             else
             {
+                DebugConsoleInfo("Local AlyxLib version is ahead of remote.");
                 ShowSimplePopup("You are ahead of the latest version somehow, you must have a pre-release version.");
             }
         }
@@ -1126,9 +1124,11 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
             }
 
             ShowSimplePopup("Context menu added! Right-click any folder or blank space in a folder to use AlyxLibInstaller.", "Success");
+            FileLogger.Log("Context menu added to registry.");
         }
         catch (Exception ex)
         {
+            FileLogger.Log(ex, "Failed to add context menu");
             ShowWarningPopup("Failed to add context menu:\n" + ex.Message);
         }
     }
@@ -1140,9 +1140,11 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
             Registry.CurrentUser.DeleteSubKeyTree(ContextMenuKey, false);
             Registry.CurrentUser.DeleteSubKeyTree(BackgroundContextMenuKey, false);
             ShowSimplePopup("Context menu removed.", "Success");
+            FileLogger.Log("Context menu removed from registry.");
         }
         catch (Exception ex)
         {
+            FileLogger.Log($"Failed to remove context menu: {ex.Message}\n{ex.StackTrace}");
             ShowWarningPopup("Failed to remove context menu:\n" + ex.Message);
         }
     }
