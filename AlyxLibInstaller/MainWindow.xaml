@@ -27,14 +27,15 @@
 
             <StackPanel Orientation="Horizontal" x:Name="AppTitleBar" Grid.Row="0" VerticalAlignment="Top" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Height="32">
 
-                <Image Source="/alyxlib.ico" Width="16" Height="16" Margin="8,0,0,0" />
+                <Image Source="/alyxlib_icon.ico" Width="16" Height="16" Margin="8,0,0,0" />
                 <TextBlock x:Name="AppTitle" Text="AlyxLib Installer" VerticalAlignment="Top" Margin="8,8,0,0" FontFamily="Segoe UI Variable" Style="{StaticResource CaptionTextBlockStyle}" />
             </StackPanel>
 
             <MenuBar Grid.Row="1" x:Name="MainMenuBar" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
                 <MenuBarItem Title="File">
                     <MenuFlyoutSubItem Text="Addons" x:Name="MenuBarAddons" GotFocus="MenuBarAddons_GotFocus"/>
-                    <MenuFlyoutItem Text="Open Addon..."/>
+                    <MenuFlyoutItem Text="New Addon..." Click="MenuBarNewAddon_Click"/>
+                    <MenuFlyoutItem Text="Open Addon..." Click="MenuBarOpenAddon_Click"/>
                     <MenuFlyoutSeparator />
                     <MenuFlyoutItem Text="Download AlyxLib" x:Name="MenuBarDownloadAlyxLib" Click="MenuBarDownloadAlyxLib_Click" />
                     <MenuFlyoutItem Text="Select AlyxLib Path" x:Name="MenuBarSelectAlyxLibPath" Click="MenuBarSelectAlyxLibPath_Click" />
@@ -45,6 +46,7 @@
 
                 <MenuBarItem Title="Addon">
                     <MenuFlyoutItem Text="Open Addon Folder" Click="OpenAddonFolder_Click" />
+                    <MenuFlyoutItem Text="Manage Removal List" Click="MenuBarManageRemoveList_Click" />
                 </MenuBarItem>
 
                 <MenuBarItem Title="Settings">
@@ -105,7 +107,6 @@
                                 CheckboxContent="VScript Base"
                                 TooltipText=""
                                 DescriptionText="All AlyxLib vscript related files, including 'gameinit', 'mod init' and '.vscode' settings files."
-                                Click="InstallOptionScriptBase_Click"
                             />
 
                             <StackPanel Orientation="Horizontal" Margin="0,-5,0,0">
@@ -152,7 +153,9 @@
                         <SplitButton x:Name="UninstallButton" Content="Remove For Upload" Click="UninstallButton_Click">
                             <SplitButton.Flyout>
                                 <MenuFlyout>
-                                    <MenuFlyoutItem Text="Remove All Unchanged" Click="UninstallRemoveUnchanged_Click"/>
+                                    <MenuFlyoutItem Text="Remove Unticked Items" Click="UninstallRemoveUnticked_Click" />
+                                    <!-- <MenuFlyoutItem Text="Remove Unchanged AlyxLib Files" Click="UninstallRemoveUnchanged_Click"/> -->
+                                    <MenuFlyoutItem Text="Remove All AlyxLib Files" Click="UninstallRemoveAllFiles_Click"/>
                                 </MenuFlyout>
                             </SplitButton.Flyout>
                         </SplitButton>

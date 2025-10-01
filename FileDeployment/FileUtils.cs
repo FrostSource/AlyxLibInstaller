@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -138,6 +139,31 @@ namespace FileDeployment
             string path2 = Path.GetFullPath(targetPath).TrimEnd(Path.DirectorySeparatorChar);
 
             return string.Equals(path1, path2, StringComparison.OrdinalIgnoreCase);
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern bool CreateHardLink(string lpFileName, string lpExistingFileName, IntPtr lpSecurityAttributes);
+
+        /// <summary>
+        /// Creates a hard link from source file to destination file path.
+        /// </summary>
+        /// <param name="sourceFilePath">The existing source file.</param>
+        /// <param name="destinationFilePath">The new hard link to create.</param>
+        /// <exception cref="IOException">Thrown if the hard link could not be created.</exception>
+        public static void CreateHardLinkFile(string sourceFilePath, string destinationFilePath, bool replaceExisting = false)
+        {
+            if (!File.Exists(sourceFilePath))
+                throw new FileNotFoundException($"Source file '{sourceFilePath}' does not exist.", sourceFilePath);
+
+            if (!replaceExisting && File.Exists(destinationFilePath))
+                throw new IOException($"Destination file '${destinationFilePath}' already exists.");
+
+            bool result = CreateHardLink(destinationFilePath, sourceFilePath, IntPtr.Zero);
+            if (!result)
+            {
+                int errorCode = Marshal.GetLastWin32Error();
+                throw new IOException($"Failed to create hard link. Win32 Error Code: {errorCode}");
+            }
         }
 
         /// <summary>

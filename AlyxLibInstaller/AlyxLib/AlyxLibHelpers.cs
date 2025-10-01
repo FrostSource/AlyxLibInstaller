@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -39,10 +40,14 @@ internal static class AlyxLibHelpers
         var configPath = Path.Combine(addon.ContentPath, ".alyxlib/config.json");
         if (File.Exists(configPath))
         {
-            config = JsonSerializer.Deserialize<AddonConfig>(File.ReadAllText(configPath));
-            if (config == null)
+            AddonConfig? _config = JsonSerializer.Deserialize<AddonConfig>(File.ReadAllText(configPath), AddonConfigJsonContext.Default.AddonConfig);
+            if (_config == null)
+            {
+                config = new();
                 return false;
+            }
 
+            config = _config;
             return true;
         }
 
@@ -134,7 +139,7 @@ internal static class AlyxLibHelpers
         var configPath = Path.Combine(addon.ContentPath, ".alyxlib/config.json");
         if (File.Exists(configPath))
         {
-            AddonConfig? config = JsonSerializer.Deserialize<AddonConfig>(File.ReadAllText(configPath));
+            AddonConfig? config = JsonSerializer.Deserialize<AddonConfig>(File.ReadAllText(configPath), AddonConfigJsonContext.Default.AddonConfig);
             return config ?? new AddonConfig();
         }
 
@@ -164,7 +169,7 @@ internal static class AlyxLibHelpers
             di.Attributes = FileAttributes.Directory | FileAttributes.Hidden;
         }
 
-        File.WriteAllText(configPath, JsonSerializer.Serialize(config));
+        File.WriteAllText(configPath, JsonSerializer.Serialize(config, AddonConfigJsonContext.Default.AddonConfig));
     }
 
     /// <summary>
@@ -188,10 +193,16 @@ internal static class AlyxLibHelpers
 
                 // Ensure the destination directory exists
                 var targetPath = Path.Combine(extractTo, relativePath);
-                Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
+                string? path = Path.GetDirectoryName(targetPath) ?? throw new Exception($"Directory name for path '{targetPath}' invalid.");
+                Directory.CreateDirectory(path);
 
                 // Extract the file
                 entry.ExtractToFile(targetPath, overwrite: true);
             }
+    }
+
+    public static bool StringIsValidModName(string input)
+    {
+        return !input.Any(c => !char.IsLetterOrDigit(c) && c != '_');
     }
 }

@@ -20,7 +20,7 @@ public class SymlinkMap
     public bool RemoveOnUpload = false;
     public bool IsSymbolicLink = true;
 
-    private PathInfo? toInfo;
+    //private PathInfo? toInfo;
 
     public SymlinkMap(string from, string to, bool isContentFile, bool removeOnUpload)
     {

@@ -149,6 +149,10 @@ namespace FileDeployment
                         }
                     }
                 }
+                else
+                {
+                    Log(LogEntry.Warning(operation, "Operation is not marked for removal in deployment manifest, skipping..."));
+                }
             }
             
             return new DeploymentResult(success, fail);
@@ -166,6 +170,26 @@ namespace FileDeployment
                 result = new DeploymentResult(0, 0);
                 return false;
             }
+        }
+
+        public string[] GetCategoryDestinations(string category)
+        {
+            if (!Categories.ContainsKey(category))
+                throw new KeyNotFoundException($"Category '{category}' not found in manifest");
+
+            var destinations = new List<string>();
+
+            foreach (FileOperation operation in Categories[category])
+            {
+                if (operation is IFileOperationWithDestination operationWithDestination)
+                {
+                    string? destination = operationWithDestination.Destination?.ToString();
+                    if (!string.IsNullOrEmpty(destination))
+                        destinations.Add(destination);
+                }
+            }
+
+            return destinations.ToArray();
         }
 
         public void ApplyDefaultChecks()

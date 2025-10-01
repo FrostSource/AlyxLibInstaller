@@ -1,4 +1,5 @@
 using AlyxLibInstaller.AlyxLib;
+using LibGit2Sharp;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -29,7 +30,7 @@ namespace AlyxLibInstaller;
 /// </summary>
 public sealed partial class MainWindow : WinUIEx.WindowEx
 {
-    private ElementTheme _currentTheme = ElementTheme.Default;
+    //private ElementTheme _currentTheme = ElementTheme.Default;
 
     private readonly AlyxLibManager AlyxLibInstance = new();
 
@@ -47,7 +48,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         new Tuple<string, ScriptEditor>("VS Code", ScriptEditor.VisualStudioCode),
     };
 
-    private bool userHasPrivileges = true;
+    //private bool userHasPrivileges = true;
 
     public string? RequestedAddonName { get; set; }
 
@@ -126,7 +127,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         {
             //TODO: Show popup to user about symlinks and how to enable them
             //throw new NotImplementedException("This installer requires developer mode or administrator privileges to install.");
-            userHasPrivileges = false;
+            //userHasPrivileges = false;
             ShowPrivilegeWarningPopup();
         }
         else if (string.IsNullOrEmpty(Settings.AlyxLibDirectory))
@@ -141,7 +142,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         {
             if (!HLA.AddonExists(RequestedAddonName))
             {
-                ShowWarningPopup($"Folder '{RequestedAddonName}' is not a Half-Life Alyx addon!");
+                DialogHelper.ShowWarningPopup(this, $"Folder '{RequestedAddonName}' is not a Half-Life Alyx addon!");
             }
             else
             {
@@ -198,7 +199,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
                     Process.Start("explorer.exe", $"/select,\"{linkText}\"");
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Optional: handle errors (log, show message, etc.)
             }
@@ -230,6 +231,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         {
             string candidate = match.Value;
             string validPath = Utils.FindLongestValidPath(candidate);
+            //string validPath = candidate;
 
             if (validPath != null)
             {
@@ -423,7 +425,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
     private void UpdateEnabledControlsBasedOnCorrectSettings()
     {
         bool addonIsValid = CurrentAddon != null;
-        InstallButton.IsEnabled = addonIsValid && AlyxLibInstance.AlyxLibExists && StringIsValidModName(AddonModNameTextBox.Text);
+        InstallButton.IsEnabled = addonIsValid && AlyxLibInstance.AlyxLibExists && AlyxLibHelpers.StringIsValidModName(AddonModNameTextBox.Text);
         UninstallButton.IsEnabled = addonIsValid;
 
         AddonModNameTextBox.IsEnabled = addonIsValid;
@@ -454,10 +456,15 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
     /// <returns></returns>
     internal bool SelectAddon(string addonName)
     {
-        CurrentAddon = HLA.GetAddon(addonName);
-        UpdateEnabledControlsBasedOnCorrectSettings();
-        if (CurrentAddon != null)
+        if (!HLA.TryGetAddon(addonName, out CurrentAddon))
         {
+            DebugConsoleError($"'{addonName}' is not in the Half Life Alyx 'hlvr_addons' folder!");
+            UpdateEnabledControlsBasedOnCorrectSettings();
+            return false;
+        }
+        //CurrentAddon = HLA.GetAddon(addonName);
+        //if (CurrentAddon != null)
+        //{
 
             //if (AlyxLib.AddonHasAlyxLib(CurrentAddon))
             //{
@@ -496,13 +503,13 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
                 // Show any errors
                 CheckAllOptions();
 
-                DebugConsoleVerbose($"AlyxLib config file found for {CurrentAddon.Name}.");
+                DebugConsoleVerbose($"AlyxLib config file found for {CurrentAddon.Name}");
             }
             // No settings but AlyxLib exists in some form, probably a pre-installer version
             else if (AlyxLibHelpers.AddonHasAlyxLib(CurrentAddon))
             {
-                DebugConsoleVerbose($"AlyxLib config file wasn't found for {CurrentAddon.Name}, but AlyxLib was detected in addon.");
-                ShowWarningPopup($"It looks like {CurrentAddon.Name} has a version of AlyxLib that wasn't installed using this installer or the config file was deleted. Some options may appear incorrectly. It is recommended to backup your project before installing in case any custom AlyxLib files are modified.");
+                DebugConsoleVerbose($"AlyxLib config file wasn't found for {CurrentAddon.Name}, but AlyxLib was detected in addon");
+                DialogHelper.ShowWarningPopup(this, $"It looks like {CurrentAddon.Name} has a version of AlyxLib that wasn't installed using this installer or the config file was deleted. Some options may appear incorrectly. It is recommended to backup your project before installing in case any custom AlyxLib files are modified.");
 
                 // Show any errors
                 CheckAllOptions();
@@ -512,7 +519,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
                 // Show any errors or warnings for file collisions
                 CheckAllOptions(true);
 
-                DebugConsoleVerboseWarning($"AlyxLib config file wasn't found for {CurrentAddon.Name}.");
+                DebugConsoleVerboseWarning($"AlyxLib config file wasn't found for {CurrentAddon.Name}");
             }
 
             AppTitle.Text = $"AlyxLib Installer: {addonName}";
@@ -538,11 +545,11 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
             DebugConsoleInfo($"Addon selected: {addonName}");
 
             return true;
-        }
-        else
-        {
-            return false;
-        }
+        //}
+        //else
+        //{
+            
+        //}
     }
 
     private void UnselectAddon()
@@ -600,12 +607,12 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
             else
             {
                 SetAlyxLibPath(null);
-                ShowWarningPopup($"{folder.Path} is not a valid AlyxLib folder!");
+                DialogHelper.ShowWarningPopup(this, $"{folder.Path} is not a valid AlyxLib folder!");
             }
         }
         else
         {
-            DebugConsoleVerboseWarning("User cancelled AlyxLib folder selection. Download aborted.");
+            DebugConsoleVerbose("User cancelled AlyxLib folder selection. Download aborted.");
         }
 
     }
@@ -683,75 +690,79 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         DownloadProgressRing.Value = e;
     }
 
-    public async Task<ContentDialogResult> GetPopupResult(string message, string title = "", string primaryButtonText = "", string closeButtonText = "Cancel")
-    {
-        ContentDialog dialog = new ContentDialog();
+    //public async Task<ContentDialogResult> GetPopupResult(string message, string title = "", string primaryButtonText = "", string closeButtonText = "Cancel")
+    //{
+    //    ContentDialog dialog = new ContentDialog();
 
-        // XamlRoot must be set in the case of a ContentDialog running in a Desktop app
-        dialog.XamlRoot = this.Content.XamlRoot;
-        dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
-        dialog.Title = title;
-        dialog.CloseButtonText = closeButtonText;
-        dialog.PrimaryButtonText = primaryButtonText;
+    //    // XamlRoot must be set in the case of a ContentDialog running in a Desktop app
+    //    dialog.XamlRoot = this.Content.XamlRoot;
+    //    dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
+    //    dialog.Title = title;
+    //    dialog.CloseButtonText = closeButtonText;
+    //    dialog.PrimaryButtonText = primaryButtonText;
 
-        // Default button based on if primary button exists
-        dialog.DefaultButton = string.IsNullOrWhiteSpace(primaryButtonText) ? ContentDialogButton.Close : ContentDialogButton.Primary;
+    //    // Default button based on if primary button exists
+    //    dialog.DefaultButton = string.IsNullOrWhiteSpace(primaryButtonText) ? ContentDialogButton.Close : ContentDialogButton.Primary;
 
-        dialog.Content = new SimpleTextDialog(message);
+    //    dialog.Content = new SimpleTextDialog(message);
 
-        var result = await dialog.ShowAsync();
-        return result;
-    }
+    //    var result = await dialog.ShowAsync();
+    //    return result;
+    //}
 
-    /// <summary>
-    /// Show a simple popup with a message and an OK button.
-    /// </summary>
-    /// <param name="message"></param>
-    /// <param name="title"></param>
-    public async void ShowSimplePopup(string message, string title = "")
-    {
-        await GetPopupResult(message, title, "OK", "");
-    }
+    ///// <summary>
+    ///// Show a simple popup with a message and an OK button.
+    ///// </summary>
+    ///// <param name="message"></param>
+    ///// <param name="title"></param>
+    //public async void ShowSimplePopup(string message, string title = "")
+    //{
+    //    await GetPopupResult(message, title, "OK", "");
+    //}
 
-    public void ShowWarningPopup(string message)
-    {
-        //ContentDialog dialog = new ContentDialog();
+    //public void ShowWarningPopup(string message)
+    //{
+    //    //ContentDialog dialog = new ContentDialog();
 
-        //// XamlRoot must be set in the case of a ContentDialog running in a Desktop app
-        //dialog.XamlRoot = this.Content.XamlRoot;
-        //dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
-        //dialog.Title = "Warning";
-        //dialog.CloseButtonText = "OK";
-        //dialog.DefaultButton = ContentDialogButton.Close;
+    //    //// XamlRoot must be set in the case of a ContentDialog running in a Desktop app
+    //    //dialog.XamlRoot = this.Content.XamlRoot;
+    //    //dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
+    //    //dialog.Title = "Warning";
+    //    //dialog.CloseButtonText = "OK";
+    //    //dialog.DefaultButton = ContentDialogButton.Close;
 
-        //dialog.Content = new SimpleTextDialog(message);
+    //    //dialog.Content = new SimpleTextDialog(message);
 
-        //var result = await dialog.ShowAsync();
+    //    //var result = await dialog.ShowAsync();
 
-        ShowSimplePopup(message, "Warning");
-    }
+    //    ShowSimplePopup(message, "Warning");
+    //}
 
     /// <summary>
     /// Shows the popup asking the user to download or select AlyxLib location.
     /// </summary>
     public async void ShowIntroAlyxLibPopup()
     {
-        ContentDialog dialog = new ContentDialog();
+        //ContentDialog dialog = new ContentDialog();
 
-        // XamlRoot must be set in the case of a ContentDialog running in a Desktop app
-        dialog.XamlRoot = this.Content.XamlRoot;
-        dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
-        dialog.Title = "Download AlyxLib";
-        dialog.PrimaryButtonText = "Download AlyxLib";
-        dialog.SecondaryButtonText = "Select AlyxLib Folder";
-        dialog.CloseButtonText = "Cancel";
-        dialog.DefaultButton = ContentDialogButton.Primary;
+        //// XamlRoot must be set in the case of a ContentDialog running in a Desktop app
+        //dialog.XamlRoot = this.Content.XamlRoot;
+        //dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
+        //dialog.Title = "Download AlyxLib";
+        //dialog.PrimaryButtonText = "Download AlyxLib";
+        //dialog.SecondaryButtonText = "Select AlyxLib Folder";
+        //dialog.CloseButtonText = "Cancel";
+        //dialog.DefaultButton = ContentDialogButton.Primary;
 
-        dialog.Content = new SimpleTextDialog("AlyxLibDownloadPopup_Message".GetLocalized());
+        //dialog.Content = new SimpleTextDialog("AlyxLibDownloadPopup_Message".GetLocalized());
 
-        var result = await dialog.ShowAsync();
+        //var result = await dialog.ShowAsync();
 
-        switch (result)
+        DialogResultWithData<SimpleTextDialog> result = await DialogHelper.ShowCustomPopupAsync(this,
+            new SimpleTextDialog("AlyxLibDownloadPopup_Message".GetLocalized()),
+            "Setup AlyxLib", "Download AlyxLib", "Select AlyxLib Folder", "Cancel");
+
+        switch (result.Result)
         {
             case ContentDialogResult.Primary:
                 DownloadAlyxLib();
@@ -765,14 +776,16 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
 
     public async void ShowPrivilegeWarningPopup()
     {
-        ContentDialog dialog = new ContentDialog();
-        dialog.XamlRoot = this.Content.XamlRoot;
-        dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
-        dialog.Title = "Administrator Privileges Required";
-        dialog.CloseButtonText = "OK";
-        dialog.DefaultButton = ContentDialogButton.Close;
-        dialog.Content = new PrivilegeWarningDialog();
-        await dialog.ShowAsync();
+        //ContentDialog dialog = new ContentDialog();
+        //dialog.XamlRoot = this.Content.XamlRoot;
+        //dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
+        //dialog.Title = "Administrator Privileges Required";
+        //dialog.CloseButtonText = "OK";
+        //dialog.DefaultButton = ContentDialogButton.Close;
+        //dialog.Content = new PrivilegeWarningDialog();
+        //await dialog.ShowAsync();
+
+        await DialogHelper.ShowCustomPopupAsync(this, new PrivilegeWarningDialog(), "Administrator Privileges Required");
     }
 
     private void MenuBarAddonSelection_Click(object sender, RoutedEventArgs e)
@@ -784,7 +797,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         }
         else
         {
-            ShowWarningPopup($"Could not find addon {addonFlyout.Text} for some reason!");
+            DialogHelper.ShowWarningPopup(this, $"Could not find addon {addonFlyout.Text} for some reason!");
         }
     }
 
@@ -807,23 +820,15 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         }
     }
 
-    private void UninstallButton_Click(SplitButton sender, SplitButtonClickEventArgs args)
+    private AddonConfig GatherInstallOptions(LocalAddon? addon = null)
     {
-        if (CurrentAddon == null)
-        {
-            DebugConsoleError("No addon selected, cannot remove AlyxLib for upload");
-            return;
-        }
-
         string modFolderName = AddonModNameTextBox.Text;
         if (modFolderName == "")
         {
-            modFolderName = CurrentAddon.Name;
+            modFolderName = addon?.Name ?? "";
         }
 
-        SetLoadingOverlayVisible(true, "Removing AlyxLib files for workshop upload");
-
-        AlyxLibInstance.FileManager.UninstallAlyxLibForUpload(CurrentAddon, new()
+        return new()
         {
             VScriptInstalled = InstallOptionScriptBase.IsChecked == true,
             SoundEventInstalled = InstallOptionSoundEvent.IsChecked == true,
@@ -833,37 +838,112 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
             EditorType = (ScriptEditor)ScriptEditorSettingsOption.SelectedValue,
 
             Version = AlyxLibInstance.AlyxLibVersion
-        });
+        };
+    }
+
+    private void UninstallButton_Click(SplitButton sender, SplitButtonClickEventArgs args)
+    {
+        if (CurrentAddon == null)
+        {
+            DebugConsoleError("No addon selected, cannot remove AlyxLib for upload");
+            return;
+        }
+
+        var options = GatherInstallOptions();
+
+        SetLoadingOverlayVisible(true, "Removing AlyxLib files for workshop upload");
+
+        AlyxLibInstance.FileManager.UninstallAlyxLibForUpload(CurrentAddon, options);
 
         SetLoadingOverlayVisible(false);
 
-        ShowInfoBar("Remember to Install again after uploading your addon to the workshop!");
+        ShowInfoBar("Remember to Install again after uploading your addon to the workshop!", InfoBarSeverity.Success);
+    }
+
+    private async void UninstallRemoveUnticked_Click(object sender, RoutedEventArgs e)
+    {
+        if (CurrentAddon == null)
+        {
+            DebugConsoleError("No addon selected, cannot uninstall AlyxLib");
+            return;
+        }
+
+        var options = GatherInstallOptions();
+
+        // Warn user about removal of git repository
+        if (options.GitInstalled == false && Repository.IsValid(CurrentAddon.ContentPath))
+        {
+            var result = await DialogHelper.ShowPopupAsync(
+                this,
+                "A Git repository exists in this addon folder and you have unselected the Git option.\n\n" +
+                "Are you sure you would like to delete the Git repository?",
+                "Delete Repository?",
+                "Yes, delete it",
+                "",
+                "No, go back"
+                );
+
+            if (result != ContentDialogResult.Primary)
+            {
+                DebugConsoleVerbose("User cancelled Git removal");
+                return;
+            }
+        }
+
+        // Create options removed string
+        var parts = new List<string>();
+        if (!options.VScriptInstalled) parts.Add("VScript");
+        if (!options.SoundEventInstalled) parts.Add("Sounds");
+        if (!options.PanoramaInstalled) parts.Add("Panorama");
+        if (!options.GitInstalled) parts.Add("Git");
+        string desc = string.Join(", ", parts);
+
+        DebugConsoleInfo($"Removing {desc} ...");
+
+        AlyxLibInstance.FileManager.UninstallAlyxLib(CurrentAddon, options);
+
+
     }
 
     // Add event handlers for the new uninstall dropdown options
-    private async void UninstallRemoveUnchanged_Click(object sender, RoutedEventArgs e)
+    //private async void UninstallRemoveUnchanged_Click(object sender, RoutedEventArgs e)
+    //{
+    //    ContentDialog dialog = new ContentDialog();
+
+    //    // XamlRoot must be set in the case of a ContentDialog running in a Desktop app
+    //    dialog.XamlRoot = this.Content.XamlRoot;
+    //    dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
+    //    dialog.Title = "Remove AlyxLib From Addon?";
+    //    dialog.PrimaryButtonText = "Remove All";
+    //    dialog.SecondaryButtonText = "SymLinks Only";
+    //    dialog.CloseButtonText = "Cancel";
+    //    dialog.DefaultButton = ContentDialogButton.Primary;
+
+    //    //dialog.PrimaryButtonStyle = Application.Current.Resources["CriticalRedButtonStyle"] as Style;
+    //    //dialog.SecondaryButtonStyle = Application.Current.Resources["CriticalRedButtonStyle"] as Style;
+    //    dialog.Content = new UninstallDialog() { ExpanderContent = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8\nLine 9\nLine 10" };
+
+    //    var result = await dialog.ShowAsync();
+    //}
+
+    private void UninstallRemoveAllFiles_Click(object sender, RoutedEventArgs e)
     {
-        ContentDialog dialog = new ContentDialog();
+        if (UninstallButton is FrameworkElement anchor)
+        {
+            var flyout = new Flyout
+            {
+                Content = new StackPanel
+                {
+                    Children =
+                    {
+                        new TextBlock { Text = "All AlyxLib files will be removed. Proceed?" },
+                        new Button { Content = "Yes", Margin = new Thickness(0,8,0,0), HorizontalAlignment = HorizontalAlignment.Left }
+                    }
+                }
+            };
+            flyout.ShowAt(anchor);
+        }
 
-        // XamlRoot must be set in the case of a ContentDialog running in a Desktop app
-        dialog.XamlRoot = this.Content.XamlRoot;
-        dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
-        dialog.Title = "Remove AlyxLib From Addon?";
-        dialog.PrimaryButtonText = "Remove All";
-        dialog.SecondaryButtonText = "SymLinks Only";
-        dialog.CloseButtonText = "Cancel";
-        dialog.DefaultButton = ContentDialogButton.Primary;
-
-        //dialog.PrimaryButtonStyle = Application.Current.Resources["CriticalRedButtonStyle"] as Style;
-        //dialog.SecondaryButtonStyle = Application.Current.Resources["CriticalRedButtonStyle"] as Style;
-        dialog.Content = new UninstallDialog() { ExpanderContent = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8\nLine 9\nLine 10" };
-
-        var result = await dialog.ShowAsync();
-    }
-
-
-    private void InstallOptionScriptBase_Click(object sender, RoutedEventArgs e)
-    {
     }
 
     private void MenuBarSelectAlyxLibPath_Click(object sender, RoutedEventArgs e)
@@ -961,11 +1041,11 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         {
             var (versionComparison, localVersion, remoteVersion) = await AlyxLibInstance.VersionManager.CompareVersions();
             DebugConsoleVerbose($"Version diff: {versionComparison}");
-            FileLogger.Log("User checked for AlyxLib updates.");
+            FileLogger.Log("User checked for AlyxLib updates");
             if (versionComparison > 0)
             {
                 DebugConsoleInfo($"Update available: {localVersion} -> {remoteVersion}");
-                var result = await GetPopupResult($"New version available!\nv{localVersion} -> v{remoteVersion}", "Update Available", "Download", "Cancel");
+                var result = await DialogHelper.ShowPopupAsync(this, $"New version available!\nv{localVersion} -> v{remoteVersion}", "Update Available", "Download", "Cancel");
                 if (result == ContentDialogResult.Primary)
                 {
                     DownloadAlyxLib();
@@ -974,12 +1054,12 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
             else if (versionComparison == 0)
             {
                 DebugConsoleInfo("AlyxLib is up to date.");
-                ShowSimplePopup($"You are up to date!\nv{localVersion}", "Up To Date");
+                DialogHelper.ShowSimplePopup(this, $"You are up to date!\nLocal: v{localVersion}\nRemote: v{remoteVersion}", "Up To Date");
             }
             else
             {
-                DebugConsoleInfo("Local AlyxLib version is ahead of remote.");
-                ShowSimplePopup("You are ahead of the latest version somehow, you must have a pre-release version.");
+                DebugConsoleInfo("Local AlyxLib version is ahead of remote");
+                DialogHelper.ShowSimplePopup(this, "You are ahead of the latest version somehow, you must have a pre-release version.");
             }
         }
         catch (Exception ex)
@@ -988,11 +1068,6 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         }
 
 
-    }
-
-    private static bool StringIsValidModName(string input)
-    {
-        return !input.Any(c => !char.IsLetterOrDigit(c) && c != '_');
     }
 
     private void AddonModNameTextBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -1011,7 +1086,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
             //    textBox.SelectionStart = filtered.Length;
             //}
 
-            if (!StringIsValidModName(textBox.Text))
+            if (!AlyxLibHelpers.StringIsValidModName(textBox.Text))
             {
                 AddonModNameErrorText.Text = "Invalid name! Must contain only letters, numbers and underscore characters.";
                 //AddonModNameErrorText.Visibility = Visibility.Visible;
@@ -1031,7 +1106,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
     {
         if (AlyxLibInstance.AlyxLibPath == null)
         {
-            ShowWarningPopup("AlyxLib path is not set!");
+            DialogHelper.ShowWarningPopup(this, "AlyxLib path is not set!");
             return;
         }
 
@@ -1054,6 +1129,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
             newAddonFlyoutItem.Text = addonName;
             newAddonFlyoutItem.Click += MenuBarAddonSelection_Click;
             newAddonFlyoutItem.GroupName = "addons";
+            newAddonFlyoutItem.IsChecked = (CurrentAddon?.Name == addonName);
             MenuBarAddons.Items.Add(newAddonFlyoutItem);
         }
     }
@@ -1123,13 +1199,13 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
                 commandKey.SetValue("", $"\"{exePath}\" \"%V\"");
             }
 
-            ShowSimplePopup("Context menu added! Right-click any folder or blank space in a folder to use AlyxLibInstaller.", "Success");
-            FileLogger.Log("Context menu added to registry.");
+            DialogHelper.ShowSimplePopup(this, "Context menu added! Right-click any folder or blank space in a folder to use AlyxLibInstaller.", "Success");
+            FileLogger.Log("Context menu added to registry");
         }
         catch (Exception ex)
         {
             FileLogger.Log(ex, "Failed to add context menu");
-            ShowWarningPopup("Failed to add context menu:\n" + ex.Message);
+            DialogHelper.ShowWarningPopup(this, "Failed to add context menu:\n" + ex.Message);
         }
     }
 
@@ -1139,13 +1215,13 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         {
             Registry.CurrentUser.DeleteSubKeyTree(ContextMenuKey, false);
             Registry.CurrentUser.DeleteSubKeyTree(BackgroundContextMenuKey, false);
-            ShowSimplePopup("Context menu removed.", "Success");
-            FileLogger.Log("Context menu removed from registry.");
+            DialogHelper.ShowSimplePopup(this, "Context menu removed.", "Success");
+            FileLogger.Log("Context menu removed from registry");
         }
         catch (Exception ex)
         {
             FileLogger.Log($"Failed to remove context menu: {ex.Message}\n{ex.StackTrace}");
-            ShowWarningPopup("Failed to remove context menu:\n" + ex.Message);
+            DialogHelper.ShowWarningPopup(this, "Failed to remove context menu.");
         }
     }
 
@@ -1161,5 +1237,74 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
     private void ClearDebugConsole_Click(object sender, RoutedEventArgs e)
     {
         DebugConsole.Blocks.Clear();
+    }
+
+    private async void MenuBarNewAddon_Click(object sender, RoutedEventArgs e)
+    {
+        var result = await DialogHelper.ShowCustomPopupAsync(this, new NewAddonDialog(), "Creating New Addon", "Create", "Cancel");
+        if (result.Result == ContentDialogResult.Primary)
+        {
+            var addonName = result.Data?.AddonName;
+
+            if (string.IsNullOrEmpty(addonName) || !AlyxLibHelpers.StringIsValidModName(addonName))
+            {
+                DebugConsoleError($"'{addonName}' is not a valid addon name!");
+                return;
+            }
+
+            var contentPath = HLA.GetAddonContentFolder();
+            if (Directory.Exists(contentPath))
+            {
+                Directory.CreateDirectory(Path.Combine(contentPath, addonName));
+                DebugConsoleMessage("Created content folder.");
+            }
+            else
+            {
+                DebugConsoleWarning("Could not find content path!", $"Could not find content path: '{contentPath}'");
+                DebugConsoleWarning($"Addon '{addonName}' was not created");
+                return;
+            }
+
+            var gamePath = HLA.GetAddonGameFolder();
+            if (Directory.Exists(gamePath))
+            {
+                Directory.CreateDirectory(Path.Combine(gamePath, addonName));
+                DebugConsoleMessage("Created game folder");
+            }
+            else
+            {
+                DebugConsoleWarning("Could not find game path!", $"Could not find game path: '{gamePath}'");
+            }
+
+            DebugConsoleSuccess($"Successfully created addon '{addonName}'!");
+            SelectAddon(addonName);
+        }
+    }
+
+    private async void MenuBarOpenAddon_Click(object sender, RoutedEventArgs e)
+    {
+        DebugConsoleVerbose("Starting addon folder selection");
+        StorageFolder? folder = await DialogHelper.FolderPickerAsync(this);
+
+        if (folder == null)
+        {
+            DebugConsoleVerbose("User cancelled addon folder selection");
+            return;
+        }
+
+        //var name = Path.GetFileName(Path.GetDirectoryName(folder.Path));
+        var name = Path.GetFileName(folder.Path);
+        if (name == null)
+        {
+            DebugConsoleVerbose($"Path is invalid: {folder.Path}");
+            return;
+        }
+
+        SelectAddon(name);
+    }
+
+    private async void MenuBarManageRemoveList_Click(object sender, RoutedEventArgs e)
+    {
+        await DialogHelper.ShowCustomPopupAsync(this, new ManageRemovalListDialog(), "Manage Removal List", "Done");
     }
 }

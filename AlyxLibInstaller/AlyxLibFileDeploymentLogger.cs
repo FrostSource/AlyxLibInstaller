@@ -23,7 +23,7 @@ public class AlyxLibFileDeploymentLogger(LocalAddon addon) : FileDeployment.Logg
     /// </summary>
     /// <param name="path"></param>
     /// <returns></returns>
-    public static string NormalizePath(string path)
+    public static string? NormalizePath(string? path)
     {
         if (string.IsNullOrEmpty(path))
             return path;
@@ -53,8 +53,8 @@ public class AlyxLibFileDeploymentLogger(LocalAddon addon) : FileDeployment.Logg
     {
         logEntries.Add(entry);
 
-        string source = NormalizePath(entry.Source);
-        string destination = NormalizePath(entry.Destination);
+        string source = NormalizePath(entry.Source) ?? "";
+        string destination = NormalizePath(entry.Destination) ?? "";
         if (Verbose)
         {
             source = Addon.GetContentFileRelativePath(source);
@@ -62,7 +62,9 @@ public class AlyxLibFileDeploymentLogger(LocalAddon addon) : FileDeployment.Logg
         }
 
 
-        string message = entry.Operation.Description ?? entry.Message;
+        string message = (entry.Operation.Description != null)
+            ? $"{entry.Operation.Description} : {entry.Message}"
+            : entry.Message;
 
         if (entry.HasException)
         {
@@ -76,7 +78,11 @@ public class AlyxLibFileDeploymentLogger(LocalAddon addon) : FileDeployment.Logg
                 message = $"File '{destination}' already exists and will not be replaced.";
             }
             else
-                message = entry.Rule.Description ?? message;
+            {
+                message = (entry.Rule.Description != null)
+                    ? $"{entry.Rule.Description} : {message}"
+                    : message;
+            }
         }
 
         switch (entry.Type)

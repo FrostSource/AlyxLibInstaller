@@ -168,6 +168,11 @@ public partial class App : Application
         else
             MainWindow.WriteToDebugConsole(message, (Windows.UI.Color)Application.Current.Resources["DebugConsoleErrorTextColor"]);
     }
+    public static void DebugConsoleVerboseError(string message)
+    {
+        if (SettingsManager.Settings.VerboseConsole)
+            MainWindow.WriteToDebugConsole(message, (Windows.UI.Color)Application.Current.Resources["DebugConsoleErrorTextColor"]);
+    }
     /// <summary>
     /// Logs a blue info message to the debug console.
     /// </summary>

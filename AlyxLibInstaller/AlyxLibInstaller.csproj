@@ -6,29 +6,34 @@
     <RootNamespace>AlyxLibInstaller</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x86;x64;ARM64</Platforms>
-    <RuntimeIdentifiers Condition="$([MSBuild]::GetTargetFrameworkVersion('$(TargetFramework)')) &gt;= 8">win-x86;win-x64;win-arm64</RuntimeIdentifiers>
-    <RuntimeIdentifiers Condition="$([MSBuild]::GetTargetFrameworkVersion('$(TargetFramework)')) &lt; 8">win10-x86;win10-x64;win10-arm64</RuntimeIdentifiers>
+    <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+    <!-- <RuntimeIdentifiers Condition="$([MSBuild]::GetTargetFrameworkVersion('$(TargetFramework)')) &gt;= 8">win-x86;win-x64;win-arm64</RuntimeIdentifiers>
+    <RuntimeIdentifiers Condition="$([MSBuild]::GetTargetFrameworkVersion('$(TargetFramework)')) &lt; 8">win10-x86;win10-x64;win10-arm64</RuntimeIdentifiers> -->
     <PublishProfile>win-$(Platform).pubxml</PublishProfile>
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
+    <Nullable>enable</Nullable>
 
     <AppxPackage>false</AppxPackage>
-    <ApplicationType>Windows Store</ApplicationType>
+    <!--<ApplicationType>Windows Store</ApplicationType>-->
     <WindowsPackageType>None</WindowsPackageType>
     <WinUISDKReferences>false</WinUISDKReferences>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
-    
-    <TrimMode>partial</TrimMode>
+    <!--<SelfContained>true</SelfContained>-->
+
+    <!--<TrimMode>partial</TrimMode>-->
     <Title>AlyxLib Installer</Title>
     <PackageIcon></PackageIcon>
-    <ApplicationIcon>alyxlib.ico</ApplicationIcon>
-    <Nullable>enable</Nullable>
-    
+    <ApplicationIcon>alyxlib_icon.ico</ApplicationIcon>
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+    <!-- <ImplicitUsings>enable</ImplicitUsings> -->
+
   </PropertyGroup>
   <ItemGroup>
     <None Remove="AlyxLibInstallOption.xaml" />
+    <None Remove="ManageRemovalListDialog.xaml" />
+    <None Remove="NewAddonDialog.xaml" />
     <None Remove="SimpleTextDialog.xaml" />
     <None Remove="UninstallDialog.xaml" />
   </ItemGroup>
@@ -36,16 +41,16 @@
   <!--
     For removing unneeded files.
   -->
-  <Target Name="RemoveFoldersWithMuiFiles" AfterTargets="Build">
+  <!--<Target Name="RemoveFoldersWithMuiFiles" AfterTargets="Build">
     <ItemGroup>
       <RemovingFiles Include="$(OutDir)*\*.mui" Exclude="$(OutDir)en-us\*.mui" />
       <RemovingFolders Include="@(RemovingFiles->'%(RootDir)%(Directory)')" />
     </ItemGroup>
     <RemoveDir Directories="@(RemovingFolders)" />
-  </Target>
+  </Target>-->
 
   <ItemGroup>
-    <Content Include="alyxlib.ico" />
+    <Content Include="alyxlib_icon.ico" />
     <Content Include="Assets\SplashScreen.scale-200.png" />
     <Content Include="Assets\LockScreenLogo.scale-200.png" />
     <Content Include="Assets\Square150x150Logo.scale-200.png" />
@@ -57,10 +62,10 @@
 
   <ItemGroup>
     <PackageReference Include="LibGit2Sharp" Version="0.31.0" />
-    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.1742" />
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.6.241114003" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4188" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
     <PackageReference Include="Semver" Version="3.0.0" />
-    <PackageReference Include="WinUIEx" Version="2.5.0" />
+    <PackageReference Include="WinUIEx" Version="2.5.1" />
     <Manifest Include="$(ApplicationManifest)" />
   </ItemGroup>
 
@@ -75,6 +80,16 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Source2HelperLibrary\Source2HelperLibrary\Source2HelperLibrary.csproj" />
     <ProjectReference Include="..\FileDeployment\FileDeployment.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="ManageRemovalListDialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="NewAddonDialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="PrivilegeWarningDialog.xaml">

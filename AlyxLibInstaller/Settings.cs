@@ -11,7 +11,7 @@ public sealed class Settings
 
     private string lastAddon = "";
     public string LastAddon { get => lastAddon; set { lastAddon = value; SettingsManager.Save(); } }
-    
+
     private string theme = "";
     public string Theme { get => theme; set { theme = value; SettingsManager.Save(); } }
 
@@ -29,8 +29,6 @@ public sealed class Settings
 
     private string gitHubUrl = @"https://github.com/FrostSource/alyxlib";
     public string GitHubUrl { get => gitHubUrl; set { gitHubUrl = value; SettingsManager.Save(); } }
-
-
 }
 
 internal sealed class SettingsManager
@@ -54,7 +52,7 @@ internal sealed class SettingsManager
     {
         if (ReadyToSave)
         {
-            string jsonString = JsonSerializer.Serialize(Settings);
+            string jsonString = JsonSerializer.Serialize(Settings, SettingsJsonContext.Default.Settings);
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path));
             File.WriteAllText(Path, jsonString);
         }
@@ -68,6 +66,6 @@ internal sealed class SettingsManager
         }
 
         string jsonString = File.ReadAllText(Path);
-        Settings = JsonSerializer.Deserialize<Settings>(jsonString);
+        Settings = JsonSerializer.Deserialize(jsonString, SettingsJsonContext.Default.Settings);
     }
 }

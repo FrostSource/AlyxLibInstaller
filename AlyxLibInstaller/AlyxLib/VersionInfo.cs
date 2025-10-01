@@ -1,8 +1,6 @@
-﻿#nullable enable
+﻿namespace AlyxLibInstaller.AlyxLib;
 
-namespace AlyxLibInstaller.AlyxLib;
-
-class VersionInfo
+public class VersionInfo
 {
     public string Version { get; set; } = "0.0.0";
 }

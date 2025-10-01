@@ -24,49 +24,11 @@ namespace AlyxLibInstaller.AlyxLib
         {
             if (manager.IssueFound()) throw new Exception("AlyxLib path not found!");
 
-            //var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
-            //var localVersionFile = Path.Combine(AlyxLibPath.FullName, "version.json");
-            //SemVersion localVersion;
-            //if (!File.Exists(localVersionFile))
-            //{
-            //    // If there is no version file, it's probably a pre-installer version
-            //    localVersion = new SemVersion(0, 0, 0);
-            //    App.DebugConsoleVerbose("Local Version file not found, assuming pre-installer version");
-            //}
-            //else
-            //{
-            //    var localVersionContent = await File.ReadAllTextAsync(localVersionFile);
-            //    var localJson = JsonSerializer.Deserialize<VersionInfo>(localVersionContent, options);
-            //    if (localJson == null)
-            //    {
-            //        throw new Exception($"Failed to parse local version file:\n{localVersionContent}");
-            //    }
-            //    localVersion = SemVersion.Parse(localJson.Version);
-            //}
-
             if (!TryGetLocalVersion(out var localVersionString))
                 // If there is no version file, it's probably a pre-installer version
                 App.DebugConsoleVerboseWarning("Local Version file not found, assuming pre-installer version");
 
             var localVersion = SemVersion.Parse(localVersionString);
-
-            //using HttpClient client = new HttpClient();
-            //var response = await client.GetAsync(GitHubVersionFileUrl);
-            //App.DebugConsoleMessage(GitHubVersionFileUrl);
-
-            //if (!response.IsSuccessStatusCode)
-            //{
-            //    throw new Exception($"Failed to get version file from GitHub: {response.StatusCode}");
-            //}
-
-            //var remoteVersionContent = await response.Content.ReadAsStringAsync();
-            //var remoteJson = JsonSerializer.Deserialize<VersionInfo>(remoteVersionContent, options);
-            //if (remoteJson == null)
-            //{
-            //    throw new Exception($"Failed to parse version file from GitHub:\n{remoteVersionContent}");
-            //}
-            //var remoteVersion = SemVersion.Parse(remoteJson.Version);
 
             var remoteVersion = SemVersion.Parse(await GetRemoteVersion());
 
@@ -88,7 +50,7 @@ namespace AlyxLibInstaller.AlyxLib
                 throw new Exception($"Failed to get version file from GitHub: {response.StatusCode}");
 
             var remoteVersionContent = await response.Content.ReadAsStringAsync();
-            VersionInfo remoteJson = JsonSerializer.Deserialize<VersionInfo>(remoteVersionContent, JsonSerializerOptions);
+            VersionInfo? remoteJson = JsonSerializer.Deserialize(remoteVersionContent, VersionInfoJsonContext.Default.VersionInfo);
             return remoteJson == null
                 ? throw new Exception($"Failed to parse version file from GitHub:\n{remoteVersionContent}")
                 : remoteJson.Version;
@@ -115,7 +77,7 @@ namespace AlyxLibInstaller.AlyxLib
             else
             {
                 var localVersionContent = File.ReadAllText(localVersionFile);
-                var localJson = JsonSerializer.Deserialize<VersionInfo>(localVersionContent, JsonSerializerOptions);
+                VersionInfo? localJson = JsonSerializer.Deserialize(localVersionContent, VersionInfoJsonContext.Default.VersionInfo);
                 if (localJson == null)
                 {
                     version = "0.0.0";
