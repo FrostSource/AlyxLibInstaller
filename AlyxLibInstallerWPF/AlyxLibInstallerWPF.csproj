@@ -1,0 +1,50 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows7.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>preview</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>alyxlib_icon.ico</ApplicationIcon>
+
+    <!--ThemeMode error-->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+    <PackageProjectUrl></PackageProjectUrl>
+    <Description>Manage and configure your AlyxLib addons with ease.</Description>
+    <RepositoryUrl>https://github.com/FrostSource/AlyxLibInstaller</RepositoryUrl>
+
+    <AssemblyTitle>AlyxLib Installer</AssemblyTitle>
+    <Version>1.0.0</Version>
+    <Authors>FrostSource</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="Authors" Value="FrostSource"></AssemblyMetadata>
+    <AssemblyMetadata Include="License" Value="MIT"></AssemblyMetadata>
+    <AssemblyMetadata Include="BuiltWith" Value="C# 9"></AssemblyMetadata>
+    <AssemblyMetadata Include="BuiltWith" Value="WPF"></AssemblyMetadata>
+    <AssemblyMetadata Include="BuiltWith" Value="Semver"></AssemblyMetadata>
+    <AssemblyMetadata Include="BuiltWith" Value="CommunityToolkit.Mvvm"></AssemblyMetadata>
+    <AssemblyMetadata Include="BuiltWith" Value="Microsoft.Extensions.FileSystemGlobbing"></AssemblyMetadata>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="alyxlib_icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Extended.Wpf.Toolkit" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0-rc.1.25451.107" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Source2HelperLibrary\Source2HelperLibrary\Source2HelperLibrary.csproj" />
+    <ProjectReference Include="..\AlyxLibInstallerShared\AlyxLibInstallerShared.csproj" />
+    <ProjectReference Include="..\AlyxLib\AlyxLib.csproj" />
+  </ItemGroup>
+
+</Project>

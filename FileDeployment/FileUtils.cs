@@ -63,6 +63,36 @@ namespace FileDeployment
             }
         }
 
+        public static string? GetContainingFolder(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return null;
+
+            // Normalize to full path
+            path = Path.GetFullPath(path);
+
+            // If it's a file, return its directory
+            if (File.Exists(path))
+            {
+                return Path.GetDirectoryName(path);
+            }
+
+            // If it's a directory, return its parent
+            if (Directory.Exists(path))
+            {
+                return Directory.GetParent(path)?.FullName;
+            }
+
+            return null;
+        }
+
+        public static bool TryGetContainingFolder(string path, out string containingFolder)
+        {
+            containingFolder = GetContainingFolder(path)!;
+            return containingFolder != null;
+        }
+
+
         /// <summary>
         /// Deletes the specified file or directory, including all its contents if it is a directory.
         /// </summary>

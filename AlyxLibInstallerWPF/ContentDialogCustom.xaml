@@ -1,0 +1,48 @@
+﻿<Page x:Class="AlyxLibInstallerWPF.ContentDialogCustom"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:AlyxLibInstallerWPF"
+      xmlns:Converters="clr-namespace:AlyxLibInstallerWPF.Converters"
+      mc:Ignorable="d" 
+      d:DesignHeight="450" d:DesignWidth="800"
+      Title="ContentDialogCustom">
+
+    <Page.Resources>
+        <Converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+    </Page.Resources>
+
+    <StackPanel x:Name="Root">
+        
+    
+        <StackPanel x:Name="ButtonPanel"
+            Orientation="Horizontal"
+            HorizontalAlignment="Center"
+            Margin="0,0,0,10"
+            Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+            >
+        
+            <Button
+                Margin="4,0,0,0"
+                Tag="{x:Static local:ContentDialogResult.Primary}"
+                Content="{Binding PrimaryButtonText}"
+                Visibility="{Binding PrimaryButtonText, Converter={StaticResource StringToVisibilityConverter}}"
+                IsDefault="True"
+                />
+            <Button
+                Margin="4,0,0,0"
+                Tag="{x:Static local:ContentDialogResult.Secondary}"
+                Content="{Binding SecondaryButtonText}"
+                Visibility="{Binding SecondaryButtonText, Converter={StaticResource StringToVisibilityConverter}}"
+                />
+            <Button
+                Margin="4,0,0,0"
+                Tag="{x:Static local:ContentDialogResult.None}"
+                Content="{Binding CloseButtonText}"
+                Visibility="{Binding CloseButtonText, Converter={StaticResource StringToVisibilityConverter}}"
+                IsCancel="True"
+                />
+        </StackPanel>
+    </StackPanel>
+</Page>

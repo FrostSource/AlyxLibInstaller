@@ -80,6 +80,17 @@ namespace FileDeployment
             return false; // Default implementation assumes the file is changed
         }
 
+        public virtual bool DeployedFileExists()
+        {
+            if (this is IFileOperationWithDestination operationWithDestination)
+            {
+                return Path.Exists(operationWithDestination.Destination);
+            }
+            // Default implementation assumes the file does not exist
+            // can't be sure Source refers to deployed file
+            return false;
+        }
+
         /// <summary>
         /// Retrieves the deployment path for the current operation. This is generally the Source or Destination path (if type implements <see cref="IFileOperationWithDestination"/>).
         /// </summary>
@@ -103,11 +114,11 @@ namespace FileDeployment
         /// Executes the operation, validating it first if rules are present
         /// </summary>
         /// <returns></returns>
-        public virtual bool Execute()
+        public virtual FileOperationExecutionResult Execute()
         {
             if (SkipIfSourceDoesNotExist && !FileUtils.PathExists(Source))
             {
-                return false;
+                return FileOperationExecutionResult.Skipped;
             }
 
             if (this is IFileOperationWithDestination withDest)
@@ -119,18 +130,18 @@ namespace FileDeployment
                         //throw new FileAlreadyExistsException(this, $"Destination '{Destination}' already exists and will not be replaced.");
                         //Log(new(this, $"Destination '{Destination}' already exists and will not be replaced.", ));
                         Log(new(this, new FileWillNotBeReplaced() { Target = RuleTarget.Destination }) { Type = LogEntryType.Info });
-                        return false; // Skip operation if we don't replace existing files or symlinks
+                        return FileOperationExecutionResult.Skipped; // Skip operation if we don't replace existing files or symlinks
                     }
                 }
                 else if (withDest.SkipIfDestinationDoesNotExist)
                 {
-                    return false;
+                    return FileOperationExecutionResult.Skipped;
                 }
             }
 
             // Check all ValidationRules before executing the operation
             if (!Validate())
-                return false;
+                return FileOperationExecutionResult.Failed;
 
             try
             {
@@ -139,10 +150,10 @@ namespace FileDeployment
             catch (Exception ex)
             {
                 Log(new(this, $"File operation failed: {ex.Message}", ex));
-                return false;
+                return FileOperationExecutionResult.Failed;
             }
 
-            return true;
+            return FileOperationExecutionResult.Success;
         }
 
         /// <summary>

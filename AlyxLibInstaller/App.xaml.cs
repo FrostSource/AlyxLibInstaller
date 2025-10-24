@@ -87,134 +87,48 @@ public partial class App : Application
         }
     }
 
-    /// <summary>
-    /// Logs a normal message to the debug console.
-    /// </summary>
-    /// <param name="message"></param>
-    public static void DebugConsoleMessage(string message)
+    private static void Log(string message, string? verboseMessage, string colorResourceKey, bool verboseOnly = false)
     {
-        MainWindow.WriteToDebugConsole(message, (Windows.UI.Color)Application.Current.Resources["DebugConsoleNormalTextColor"]);
+        bool verbose = SettingsManager.Settings.VerboseConsole;
+
+        if (verboseOnly && !verbose)
+            return;
+
+        string msgToLog = (verbose && !string.IsNullOrEmpty(verboseMessage)) ? verboseMessage : message;
+        var color = (Windows.UI.Color)Application.Current.Resources[colorResourceKey];
+
+        MainWindow.WriteToDebugConsole(msgToLog, color);
     }
-    /// <summary>
-    /// Logs a normal message to the debug console.
-    /// Uses a verbose message if verbose mode is enabled.
-    /// </summary>
-    /// <param name="message"></param>
-    /// <param name="verboseMessage"></param>
-    public static void DebugConsoleMessage(string message, string verboseMessage)
+
+    // Normal message
+    public static void DebugConsoleMessage(string message) => Log(message, null, "DebugConsoleNormalTextColor");
+    public static void DebugConsoleMessage(string message, string verboseMessage) => Log(message, verboseMessage, "DebugConsoleNormalTextColor");
+
+    // Verbose-only message
+    public static void DebugConsoleVerbose(string message) => Log(message, null, "DebugConsoleVerboseTextColor", verboseOnly: true);
+    public static void DebugConsoleVerboseWarning(string message) => Log(message, null, "DebugConsoleVerboseWarningTextColor", verboseOnly: true);
+    public static void DebugConsoleVerboseError(string message) => Log(message, null, "DebugConsoleErrorTextColor", verboseOnly: true);
+
+    // Warning, Error, Info, Success
+    public static void DebugConsoleWarning(string message) => Log(message, null, "DebugConsoleWarningTextColor");
+    public static void DebugConsoleWarning(string message, string verboseMessage) => Log(message, verboseMessage, "DebugConsoleWarningTextColor");
+
+    public static void DebugConsoleError(string message) => Log(message, null, "DebugConsoleErrorTextColor");
+    public static void DebugConsoleError(string message, string verboseMessage) => Log(message, verboseMessage, "DebugConsoleErrorTextColor");
+
+    public static void DebugConsoleInfo(string message) => Log(message, null, "DebugConsoleInfoTextColor");
+    public static void DebugConsoleInfo(string message, string verboseMessage) => Log(message, verboseMessage, "DebugConsoleInfoTextColor");
+
+    public static void DebugConsoleSuccess(string message) => Log(message, null, "DebugConsoleSuccessTextColor");
+    public static void DebugConsoleSuccess(string message, string verboseMessage) => Log(message, verboseMessage, "DebugConsoleSuccessTextColor");
+
+    // Exception
+    public static void DebugConsoleException(Exception ex)
     {
-        if (SettingsManager.Settings.VerboseConsole)
-            MainWindow.WriteToDebugConsole(verboseMessage, (Windows.UI.Color)Application.Current.Resources["DebugConsoleNormalTextColor"]);
-        else
-            MainWindow.WriteToDebugConsole(message, (Windows.UI.Color)Application.Current.Resources["DebugConsoleNormalTextColor"]);
+        Log($"{ex.GetType().Name} exception occurred! Check log for details {FileLogger.LogFilePath}", null, "DebugConsoleErrorTextColor");
+        FileLogger.Log(ex);
     }
-    /// <summary>
-    /// Logs a verbose message to the debug console only if verbose mode is enabled.
-    /// </summary>
-    /// <param name="message"></param>
-    public static void DebugConsoleVerbose(string message)
-    {
-        if (SettingsManager.Settings.VerboseConsole)
-            MainWindow.WriteToDebugConsole(message, (Windows.UI.Color)Application.Current.Resources["DebugConsoleVerboseTextColor"]);
-    }
-    /// <summary>
-    /// Logs a verbose warning to the debug console only if verbose mode is enabled.
-    /// </summary>
-    /// <param name="message"></param>
-    public static void DebugConsoleVerboseWarning(string message)
-    {
-        if (SettingsManager.Settings.VerboseConsole)
-            MainWindow.WriteToDebugConsole(message, (Windows.UI.Color)Application.Current.Resources["DebugConsoleVerboseWarningTextColor"]);
-    }
-    /// <summary>
-    /// Logs a warning message to the debug console.
-    /// </summary>
-    /// <param name="message"></param>
-    public static void DebugConsoleWarning(string message)
-    {
-        MainWindow.WriteToDebugConsole(message, (Windows.UI.Color)Application.Current.Resources["DebugConsoleWarningTextColor"]);
-    }
-    /// <summary>
-    /// Logs a warning message to the debug console.
-    /// Uses a verbose message if verbose mode is enabled.
-    /// </summary>
-    /// <param name="message"></param>
-    /// <param name="verboseMessage"></param>
-    public static void DebugConsoleWarning(string message, string verboseMessage)
-    {
-        if (SettingsManager.Settings.VerboseConsole)
-            MainWindow.WriteToDebugConsole(verboseMessage, (Windows.UI.Color)Application.Current.Resources["DebugConsoleWarningTextColor"]);
-        else
-            MainWindow.WriteToDebugConsole(message, (Windows.UI.Color)Application.Current.Resources["DebugConsoleWarningTextColor"]);
-    }
-    /// <summary>
-    /// Logs an error message to the debug console.
-    /// </summary>
-    /// <param name="message"></param>
-    public static void DebugConsoleError(string message)
-    {
-        MainWindow.WriteToDebugConsole(message, (Windows.UI.Color)Application.Current.Resources["DebugConsoleErrorTextColor"]);
-    }
-    /// <summary>
-    /// Logs an error message to the debug console.
-    /// Uses a verbose message if verbose mode is enabled.
-    /// </summary>
-    /// <param name="message"></param>
-    /// <param name="verboseMessage"></param>
-    public static void DebugConsoleError(string message, string verboseMessage)
-    {
-        if (SettingsManager.Settings.VerboseConsole)
-            MainWindow.WriteToDebugConsole(verboseMessage, (Windows.UI.Color)Application.Current.Resources["DebugConsoleErrorTextColor"]);
-        else
-            MainWindow.WriteToDebugConsole(message, (Windows.UI.Color)Application.Current.Resources["DebugConsoleErrorTextColor"]);
-    }
-    public static void DebugConsoleVerboseError(string message)
-    {
-        if (SettingsManager.Settings.VerboseConsole)
-            MainWindow.WriteToDebugConsole(message, (Windows.UI.Color)Application.Current.Resources["DebugConsoleErrorTextColor"]);
-    }
-    /// <summary>
-    /// Logs a blue info message to the debug console.
-    /// </summary>
-    /// <param name="message"></param>
-    public static void DebugConsoleInfo(string message)
-    {
-        MainWindow.WriteToDebugConsole(message, (Windows.UI.Color)Application.Current.Resources["DebugConsoleInfoTextColor"]);
-    }
-    /// <summary>
-    /// Logs a blue info message to the debug console.
-    /// Uses a verbose message if verbose mode is enabled.
-    /// </summary>
-    /// <param name="message"></param>
-    /// <param name="verboseMessage"></param>
-    public static void DebugConsoleInfo(string message, string verboseMessage)
-    {
-        if (SettingsManager.Settings.VerboseConsole)
-            MainWindow.WriteToDebugConsole(verboseMessage, (Windows.UI.Color)Application.Current.Resources["DebugConsoleInfoTextColor"]);
-        else
-            MainWindow.WriteToDebugConsole(message, (Windows.UI.Color)Application.Current.Resources["DebugConsoleInfoTextColor"]);
-    }
-    /// <summary>
-    /// Logs a success message to the debug console.
-    /// </summary>
-    /// <param name="message"></param>
-    public static void DebugConsoleSuccess(string message)
-    {
-        MainWindow.WriteToDebugConsole(message, (Windows.UI.Color)Application.Current.Resources["DebugConsoleSuccessTextColor"]);
-    }
-    /// <summary>
-    /// Logs a success message to the debug console.
-    /// Uses a verbose message if verbose mode is enabled.
-    /// </summary>
-    /// <param name="message"></param>
-    /// <param name="verboseMessage"></param>
-    public static void DebugConsoleSuccess(string message, string verboseMessage)
-    {
-        if (SettingsManager.Settings.VerboseConsole)
-            MainWindow.WriteToDebugConsole(verboseMessage, (Windows.UI.Color)Application.Current.Resources["DebugConsoleSuccessTextColor"]);
-        else
-            MainWindow.WriteToDebugConsole(message, (Windows.UI.Color)Application.Current.Resources["DebugConsoleSuccessTextColor"]);
-    }
+
 
     public static MainWindow MainWindow = new();
 }

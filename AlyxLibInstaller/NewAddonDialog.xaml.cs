@@ -12,8 +12,7 @@ using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
-
-using AlyxLibInstaller.AlyxLib;
+using AlyxLib;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -29,7 +28,7 @@ public sealed partial class NewAddonDialog : Page
         InitializeComponent();
     }
 
-    public string AddonName { get; private set; }
+    public string AddonName { get; private set; } = "";
 
     private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
     {

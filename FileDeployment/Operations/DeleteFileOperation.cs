@@ -37,6 +37,11 @@ namespace FileDeployment.Operations
             return false; // A delete operation does not have a deployed file to compare against, so it is always considered changed.
         }
 
+        public override bool DeployedFileExists()
+        {
+            return Path.Exists(Source);
+        }
+
         public override string GetDeploymentPath()
         {
             return string.Empty; // Delete operations do not deploy a file

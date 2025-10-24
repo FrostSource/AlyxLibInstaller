@@ -1,4 +1,3 @@
-using AlyxLibInstaller.AlyxLib;
 using LibGit2Sharp;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
@@ -19,6 +18,8 @@ using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.System;
 using Windows.UI;
+using AlyxLib;
+
 using static AlyxLibInstaller.App;
 
 // To learn more about WinUI, the WinUI project structure,
@@ -30,27 +31,29 @@ namespace AlyxLibInstaller;
 /// </summary>
 public sealed partial class MainWindow : WinUIEx.WindowEx
 {
-    //private ElementTheme _currentTheme = ElementTheme.Default;
+    private readonly AlyxLibManager AlyxLibInstance = new() { Logger = new AlyxLibInstallerLogger() };
+    private readonly Settings Settings = SettingsManager.Settings;
 
-    private readonly AlyxLibManager AlyxLibInstance = new();
-
-    //public ImmutableArray<string> ElementThemeOptions { get; } = ImmutableArray.Create(Enum.GetNames<ElementTheme>());
     public List<Tuple<string, ElementTheme>> ElementThemeOptions { get; } =
     [.. Enum.GetValues(typeof(ElementTheme))
         .Cast<ElementTheme>()
         .Select(theme => new Tuple<string, ElementTheme>(theme.ToString(), theme))];
 
-    private readonly Settings Settings = SettingsManager.Settings;
 
-    private List<Tuple<string, ScriptEditor>> ScriptEditorOptions { get; } = new()
-    {
+    private List<Tuple<string, ScriptEditor>> ScriptEditorOptions { get; } =
+    [
         new Tuple<string, ScriptEditor>("None", ScriptEditor.None),
         new Tuple<string, ScriptEditor>("VS Code", ScriptEditor.VisualStudioCode),
-    };
+    ];
 
     //private bool userHasPrivileges = true;
 
     public string? RequestedAddonName { get; set; }
+
+    /// <summary>
+    /// The current local addon selected, or null otherwise.
+    /// </summary>
+    private LocalAddon? CurrentAddon = null;
 
     public MainWindow()
     {
@@ -85,6 +88,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
     private async void MainWindow_Activated_FirstTime()
     {
         MenuBarVerboseLogging.IsChecked = Settings.VerboseConsole;
+        AlyxLibInstance.VerboseLogging = Settings.VerboseConsole;
 
         // Check for log file accumulation and notify user in the debug console if needed
         if (FileLogger.HasTooManyLogFiles())
@@ -107,6 +111,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
             Settings.Theme = ElementTheme.Default.ToString();
         }
 
+        // Add theme options
         foreach (var theme in ElementThemeOptions)
         {
             var g = new RadioMenuFlyoutItem();
@@ -134,6 +139,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         {
             ShowIntroAlyxLibPopup();
         }
+        ShowIntroAlyxLibPopup();
 
         MenuBarRememberLastAddon.IsChecked = Settings.RememberLastAddon;
 
@@ -151,33 +157,28 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         }
         else
         {
-            if (Settings.RememberLastAddon)
+            if (Settings.RememberLastAddon && !string.IsNullOrEmpty(Settings.LastAddon))
             {
-                if (!string.IsNullOrEmpty(Settings.LastAddon))
+                if (!SelectAddon(Settings.LastAddon))
                 {
-                    if (!SelectAddon(Settings.LastAddon))
-                    {
-                        DebugConsoleWarning($"Could not find last addon \"{Settings.LastAddon}\".");
-                    }
+                    DebugConsoleWarning($"Could not find last addon \"{Settings.LastAddon}\".");
                 }
             }
         }
 
+        // Version check
         var result = await GetAlyxLibVersionComparison();
-        if (result.comparison > 0)
+        if (result.RemoteIsNewer)
         {
-            DebugConsoleInfo($"New version available!\nv{result.localVersion} -> v{result.remoteVersion}\nUse Help -> Check for Updates to download.");
+            DebugConsoleInfo($"New version available!\nv{result.LocalVersion} -> v{result.RemoteVersion}\nUse Help -> Check for Updates to download.");
         }
     }
 
-    private void AddHyperlink(Paragraph paragraph, string linkText)
+    private void AddHyperlink(Paragraph paragraph, string displayText, string linkTarget, bool isUrl)
     {
         var hyperlink = new Hyperlink();
-        var run = new Run { Text = linkText };
+        var run = new Run { Text = displayText };
         hyperlink.Inlines.Add(run);
-
-        bool isUrl = Uri.TryCreate(linkText, UriKind.Absolute, out Uri? uriResult) &&
-                     (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps);
 
         hyperlink.Click += async (s, e) =>
         {
@@ -185,18 +186,27 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
             {
                 if (isUrl)
                 {
-                    // Open URL in browser
-                    await Launcher.LaunchUriAsync(uriResult);
+                    if (Uri.TryCreate(linkTarget, UriKind.Absolute, out Uri? uriResult))
+                    {
+                        await Launcher.LaunchUriAsync(uriResult);
+                    }
                 }
-                else if (Directory.Exists(linkText))
+                else if (Directory.Exists(linkTarget))
                 {
-                    // Open folder
-                    await Launcher.LaunchFolderPathAsync(linkText);
+                    await Launcher.LaunchFolderPathAsync(linkTarget);
                 }
-                else if (File.Exists(linkText))
+                else if (File.Exists(linkTarget))
                 {
-                    // Select file in explorer
-                    Process.Start("explorer.exe", $"/select,\"{linkText}\"");
+                    Process.Start("explorer.exe", $"/select,\"{linkTarget}\"");
+                }
+                else
+                {
+                    // Try to open the parent directory if the file doesn't exist
+                    string parentDir = Path.GetDirectoryName(linkTarget);
+                    if (!string.IsNullOrEmpty(parentDir) && Directory.Exists(parentDir))
+                    {
+                        await Launcher.LaunchFolderPathAsync(parentDir);
+                    }
                 }
             }
             catch (Exception)
@@ -208,59 +218,103 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         paragraph.Inlines.Add(hyperlink);
     }
 
+    private string RefinePath(string candidate)
+    {
+        // Remove newlines and excessive whitespace
+        candidate = candidate.Replace("\r\n", " ").Replace("\n", " ");
+
+        // Trim trailing punctuation that's unlikely to be part of a path
+        candidate = candidate.TrimEnd('.', ',', ';', ':', '!', '?', ')', ']', '}', '"', '\'');
+
+        // Trim whitespace
+        candidate = candidate.Trim();
+
+        // If path ends with a backslash followed by space and more text, trim after the backslash
+        int lastBackslash = candidate.LastIndexOf('\\');
+        if (lastBackslash > 0 && lastBackslash < candidate.Length - 1)
+        {
+            // Check if there's suspicious content after the last backslash (like multiple spaces)
+            string afterBackslash = candidate.Substring(lastBackslash + 1);
+            if (afterBackslash.StartsWith("  ")) // Multiple spaces suggest path ended
+            {
+                candidate = candidate.Substring(0, lastBackslash);
+            }
+        }
+
+        return candidate;
+    }
 
     private Paragraph CreateRichParagraph(string message, Color color)
     {
         var paragraph = new Paragraph();
-
         string urlPattern = @"\b(?:https?://|www\.)\S+\b";
-        string pathPattern = @"[A-Za-z]:\\(?:[^<>:""/\\|?*]+\\)*[^<>:""/\\|?*]*";
+        // Improved path pattern that captures more complete paths including spaces and extensions
+        string pathPattern = @"[A-Za-z]:\\(?:[^<>:""/\\|?*\r\n'""]+\\)*[^<>:""/\\|?*\r\n'""]+";
 
         var matches = Regex.Matches(message, $"{urlPattern}|{pathPattern}", RegexOptions.IgnoreCase);
-
         int lastIndex = 0;
 
         if (matches.Count == 0)
         {
-            // No matches at all — just add full message
             paragraph.Inlines.Add(new Run { Text = message, Foreground = new SolidColorBrush(color) });
             return paragraph;
         }
 
         foreach (Match match in matches)
         {
-            string candidate = match.Value;
-            string validPath = Utils.FindLongestValidPath(candidate);
-            //string validPath = candidate;
+            string candidate = match.Value.Trim();
 
-            if (validPath != null)
+            // Check if this looks like a URL
+            if (Uri.TryCreate(candidate, UriKind.Absolute, out Uri? uriResult) &&
+                (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps))
             {
                 // Add plain text before the match
                 if (match.Index > lastIndex)
                 {
                     string plainText = message.Substring(lastIndex, match.Index - lastIndex);
-                    paragraph.Inlines.Add(new Run
-                    {
-                        Text = plainText,
-                        Foreground = new SolidColorBrush(color)
-                    });
+                    paragraph.Inlines.Add(new Run { Text = plainText, Foreground = new SolidColorBrush(color) });
                 }
 
-                AddHyperlink(paragraph, validPath);
-
-                // Add remaining text (candidate after validPath)
-                string trailing = candidate.Substring(validPath.Length);
-                if (!string.IsNullOrEmpty(trailing))
-                    paragraph.Inlines.Add(new Run { Text = trailing, Foreground = new SolidColorBrush(color) });
-
-                lastIndex = match.Index + candidate.Length;
+                AddHyperlink(paragraph, candidate, candidate, true);
+                lastIndex = match.Index + match.Length;
             }
             else
             {
-                // No valid path, just add as normal text
-                paragraph.Inlines.Add(new Run { Text = candidate, Foreground = new SolidColorBrush(color) });
-                lastIndex = match.Index + candidate.Length;
+                // It's a path - refine the candidate and find valid portion
+                string refinedPath = RefinePath(candidate);
+                string validPath = Utils.FindLongestValidPath(refinedPath);
+
+                if (!string.IsNullOrEmpty(validPath))
+                {
+                    // Add plain text before the match
+                    if (match.Index > lastIndex)
+                    {
+                        string plainText = message.Substring(lastIndex, match.Index - lastIndex);
+                        paragraph.Inlines.Add(new Run { Text = plainText, Foreground = new SolidColorBrush(color) });
+                    }
+
+                    // Add hyperlink with full path displayed, but linking to valid path
+                    AddHyperlink(paragraph, refinedPath, validPath, false);
+                    lastIndex = match.Index + match.Length;
+                }
+                else
+                {
+                    // No valid path found, treat as normal text
+                    if (match.Index > lastIndex)
+                    {
+                        string plainText = message.Substring(lastIndex, match.Index - lastIndex);
+                        paragraph.Inlines.Add(new Run { Text = plainText, Foreground = new SolidColorBrush(color) });
+                    }
+                    paragraph.Inlines.Add(new Run { Text = candidate, Foreground = new SolidColorBrush(color) });
+                    lastIndex = match.Index + match.Length;
+                }
             }
+        }
+
+        // Add any remaining text
+        if (lastIndex < message.Length)
+        {
+            paragraph.Inlines.Add(new Run { Text = message.Substring(lastIndex), Foreground = new SolidColorBrush(color) });
         }
 
         return paragraph;
@@ -287,83 +341,13 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
 
             DebugConsoleScroller.ScrollTo(DebugConsoleScroller.ScrollableWidth, DebugConsoleScroller.ScrollableHeight);
         });
-
-        //WindowConsole.Document.GetText(Microsoft.UI.Text.TextGetOptions.None, out string currentText);
-
-        //WindowConsole.IsReadOnly = false;
-        //WindowConsole.Document.Selection.StartPosition = currentText.Length;
-        //WindowConsole.Document.Selection.EndPosition = currentText.Length;
-
-        //if (!string.IsNullOrEmpty(currentText.Trim()))
-        //{
-        //    WindowConsole.Document.Selection.Text = "\r\n";
-        //    WindowConsole.Document.Selection.StartPosition = WindowConsole.Document.Selection.EndPosition;
-        //}
-        //WindowConsole.Document.Selection.Text = message;
-        //WindowConsole.Document.Selection.CharacterFormat.ForegroundColor = Microsoft.UI.Colors.Yellow;
-
-        ////WindowConsole.Document.Selection.Text = "\r\n";
-        //WindowConsole.IsReadOnly = true;
-
-        ////WindowConsole.Document.SetText(Microsoft.UI.Text.TextSetOptions.None, WindowConsole.Document.GetText() + "\n" + message);
-        ////WindowConsole.TextDocument.
     }
-
-    /// <summary>
-    /// The current local addon selected, or null otherwise.
-    /// </summary>
-    private LocalAddon? CurrentAddon = null;
-
-    ///// <summary>
-    ///// Check files for the VScript install option and show any warnings.
-    ///// </summary>
-    //private void CheckVScriptOption()
-    //{
-    //    if (CurrentAddon == null) return;
-
-    //    (AlyxLib.FileCheckResult Result, string Message, InfoBarSeverity Severity) = AlyxLib.CheckVScriptFiles(CurrentAddon);
-
-    //    if (Result == AlyxLib.FileCheckResult.AlyxLibPathNotFound)
-    //    {
-    //        SetAlyxLibPath(null);
-    //        return;
-    //    }
-
-    //    if (Result == AlyxLib.FileCheckResult.Error)
-    //    {
-    //        InstallOptionScriptBase.ShowInfoBar(Severity, Message);
-    //        return;
-    //    }
-
-    //    InstallOptionScriptBase.HideInfoBar();
-
-    //    if (Result == AlyxLib.FileCheckResult.FullyInstalled)
-    //    {
-    //        InstallOptionScriptBase.IsChecked = true;
-    //    }
-    //    else if (Result == AlyxLib.FileCheckResult.PartiallyInstalled)
-    //    {
-    //        InstallOptionScriptBase.IsChecked = null;
-    //    }
-    //    else
-    //    {
-    //        InstallOptionScriptBase.IsChecked = false;
-    //    }
-
-    //    //
-    //}
 
     private void CheckAllOptions(bool showWarnings = false)
     {
         if (CurrentAddon == null) return;
 
-        //AlyxLibInstallOption[] options = [
-        //    InstallOptionScriptBase,
-        //    InstallOptionSoundEvent,
-        //    InstallOptionPanorama,
-        //    InstallOptionGit
-        //    ];
-        Dictionary<AlyxLibInstallOption, Func<LocalAddon, (AlyxLib.FileCheckResult Result, string Message, InfoBarSeverity Severity)>> checks = new() {
+        Dictionary<AlyxLibInstallOption, Func<LocalAddon, (AlyxLib.FileCheckResult Result, string Message)>> checks = new() {
             { InstallOptionScriptBase, AlyxLibInstance.FileManager.CheckVScriptFiles },
             { InstallOptionSoundEvent, AlyxLibInstance.FileManager.CheckSoundEventFiles },
             { InstallOptionPanorama, AlyxLibInstance.FileManager.CheckPanoramaFiles },
@@ -372,18 +356,26 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
 
         foreach (var (option, check) in checks)
         {
-            var (Result, Message, Severity) = check(CurrentAddon);
+            var (Result, Message) = check(CurrentAddon);
             if (Result == FileCheckResult.AlyxLibPathNotFound)
             {
                 return;
             }
             else if (Result == FileCheckResult.Error || (Result == FileCheckResult.Warning && showWarnings))
             {
-                option.ShowInfoBar(Severity, Message);
+                InfoBarSeverity severity = Result switch
+                {
+                    FileCheckResult.AlyxLibPathNotFound => InfoBarSeverity.Error,
+                    FileCheckResult.FullyInstalled or FileCheckResult.NotInstalled => InfoBarSeverity.Success,
+                    FileCheckResult.Warning or FileCheckResult.PartiallyInstalled => InfoBarSeverity.Warning,
+                    _ => InfoBarSeverity.Warning // or throw?
+                };
+
+                option.ShowInfoBar(severity, Message);
                 continue;
             }
 
-            InstallOptionScriptBase.HideInfoBar();
+            option.HideInfoBar();
         }
     }
 
@@ -400,6 +392,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
             {
                 found = true;
                 AlyxLibInstance.SetAlyxLibPath(path);
+                Settings.AlyxLibDirectory = path;
                 if (!silent)
                     DebugConsoleSuccess($"AlyxLib path set to {path}");
             }
@@ -462,94 +455,63 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
             UpdateEnabledControlsBasedOnCorrectSettings();
             return false;
         }
-        //CurrentAddon = HLA.GetAddon(addonName);
-        //if (CurrentAddon != null)
-        //{
 
-            //if (AlyxLib.AddonHasAlyxLib(CurrentAddon))
-            //{
-            //    // If AlyxLib exists in some form, check if it is a pre-installer version
-            //    if (!AlyxLib.AddonHasConfig(CurrentAddon))
-            //    {
-            //        ShowWarningPopup($"It looks like {CurrentAddon.Name} has a version of AlyxLib that wasn't installed using this installer or the config file was deleted. Some options may appear incorrectly. It is recommended to backup your project before installing in case any custom AlyxLib files are modified.");
-            //    }
-            //    // Otherwise populate the options
-            //    else
-            //    {
-            //        AlyxLibAddonConfig config = AlyxLib.GetAddonConfig(CurrentAddon);
-            //        InstallOptionScriptBase.IsChecked = config.VScriptInstalled;
-            //        InstallOptionSoundEvent.IsChecked = config.SoundEventInstalled;
-            //        InstallOptionPanorama.IsChecked = config.PanoramaInstalled;
-            //        InstallOptionGit.IsChecked = config.GitInstalled;
-            //        AddonModNameTextBox.Text = config.ModFolderName;
-            //        InstallOptionVSCodeSettings.IsChecked = config.UseAlyxLibVSCodeSettings;
-            //    }
+        ResetAllOptions();
 
-            //    // Show any errors for each option
-            //    CheckAllOptions();
-            //}
+        if (AlyxLibHelpers.AddonHasConfig(CurrentAddon, out AddonConfig config))
+        {
+            InstallOptionScriptBase.IsChecked = config.VScriptInstalled;
+            InstallOptionSoundEvent.IsChecked = config.SoundEventInstalled;
+            InstallOptionPanorama.IsChecked = config.PanoramaInstalled;
+            InstallOptionGit.IsChecked = config.GitInstalled;
+            AddonModNameTextBox.Text = config.ModFolderName;
+            ScriptEditorSettingsOption.SelectedIndex = ScriptEditorOptions.FindIndex(x => x.Item2 == config.EditorType);
 
-            ResetAllOptions();
+            // Show any errors
+            CheckAllOptions();
 
-            if (AlyxLibHelpers.AddonHasConfig(CurrentAddon, out AddonConfig config))
+            DebugConsoleVerbose($"AlyxLib config file found for {CurrentAddon.Name}");
+        }
+        // No settings but AlyxLib exists in some form, probably a pre-installer version
+        else if (AlyxLibHelpers.AddonHasAlyxLib(CurrentAddon))
+        {
+            DebugConsoleVerbose($"AlyxLib config file wasn't found for {CurrentAddon.Name}, but AlyxLib was detected in addon");
+            DialogHelper.ShowWarningPopup(this, $"It looks like {CurrentAddon.Name} has a version of AlyxLib that wasn't installed using this installer or the config file was deleted. Some options may appear incorrectly. It is recommended to backup your project before installing in case any custom AlyxLib files are modified.");
+
+            // Show any errors
+            CheckAllOptions();
+        }
+        else
+        {
+            // Show any errors or warnings for file collisions
+            CheckAllOptions(true);
+
+            DebugConsoleVerboseWarning($"AlyxLib config file wasn't found for {CurrentAddon.Name}");
+        }
+
+        AppTitle.Text = $"AlyxLib Installer: {addonName}";
+
+        UpdateEnabledControlsBasedOnCorrectSettings();
+
+        if (Settings.RememberLastAddon)
+        {
+            Settings.LastAddon = addonName;
+        }
+
+        foreach (RadioMenuFlyoutItem addonFlyout in MenuBarAddons.Items.Cast<RadioMenuFlyoutItem>())
+        {
+            if (addonFlyout.Text == addonName)
             {
-                InstallOptionScriptBase.IsChecked = config.VScriptInstalled;
-                InstallOptionSoundEvent.IsChecked = config.SoundEventInstalled;
-                InstallOptionPanorama.IsChecked = config.PanoramaInstalled;
-                InstallOptionGit.IsChecked = config.GitInstalled;
-                AddonModNameTextBox.Text = config.ModFolderName;
-                ScriptEditorSettingsOption.SelectedIndex = ScriptEditorOptions.FindIndex(x => x.Item2 == config.EditorType);
-
-                // Show any errors
-                CheckAllOptions();
-
-                DebugConsoleVerbose($"AlyxLib config file found for {CurrentAddon.Name}");
+                addonFlyout.IsChecked = true;
+                break;
             }
-            // No settings but AlyxLib exists in some form, probably a pre-installer version
-            else if (AlyxLibHelpers.AddonHasAlyxLib(CurrentAddon))
-            {
-                DebugConsoleVerbose($"AlyxLib config file wasn't found for {CurrentAddon.Name}, but AlyxLib was detected in addon");
-                DialogHelper.ShowWarningPopup(this, $"It looks like {CurrentAddon.Name} has a version of AlyxLib that wasn't installed using this installer or the config file was deleted. Some options may appear incorrectly. It is recommended to backup your project before installing in case any custom AlyxLib files are modified.");
+        }
 
-                // Show any errors
-                CheckAllOptions();
-            }
-            else
-            {
-                // Show any errors or warnings for file collisions
-                CheckAllOptions(true);
+        AddonModNameTextBox.PlaceholderText = CurrentAddon.Name;
 
-                DebugConsoleVerboseWarning($"AlyxLib config file wasn't found for {CurrentAddon.Name}");
-            }
+        DebugConsoleInfo($"Addon selected: {addonName}");
 
-            AppTitle.Text = $"AlyxLib Installer: {addonName}";
-
-            UpdateEnabledControlsBasedOnCorrectSettings();
-
-            if (Settings.RememberLastAddon)
-            {
-                Settings.LastAddon = addonName;
-            }
-
-            foreach (RadioMenuFlyoutItem addonFlyout in MenuBarAddons.Items.Cast<RadioMenuFlyoutItem>())
-            {
-                if (addonFlyout.Text == addonName)
-                {
-                    addonFlyout.IsChecked = true;
-                    break;
-                }
-            }
-
-            AddonModNameTextBox.PlaceholderText = CurrentAddon.Name;
-
-            DebugConsoleInfo($"Addon selected: {addonName}");
-
-            return true;
-        //}
-        //else
-        //{
-            
-        //}
+        return true;
     }
 
     private void UnselectAddon()
@@ -666,7 +628,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         SetLoadingOverlayVisible(true, "Downloading AlyxLib");
 
         DebugConsoleVerbose("Downloading AlyxLib...");
-        await AlyxLibHelpers.DownloadRepository(downloadPath, Progress_ProgressChanged);
+        await AlyxLibHelpers.DownloadRepository(Settings.GitHubUrl, downloadPath, Progress_ProgressChanged);
         SetAlyxLibPath(downloadPath);
 
         SetLoadingOverlayVisible(false);
@@ -685,79 +647,14 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
     private void Progress_ProgressChanged(object? sender, float e)
     {
         DownloadProgressRing.IsIndeterminate = false;
-        DebugConsoleVerbose($"{e}");
-        DebugConsoleMessage("Hmmm hello");
         DownloadProgressRing.Value = e;
     }
-
-    //public async Task<ContentDialogResult> GetPopupResult(string message, string title = "", string primaryButtonText = "", string closeButtonText = "Cancel")
-    //{
-    //    ContentDialog dialog = new ContentDialog();
-
-    //    // XamlRoot must be set in the case of a ContentDialog running in a Desktop app
-    //    dialog.XamlRoot = this.Content.XamlRoot;
-    //    dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
-    //    dialog.Title = title;
-    //    dialog.CloseButtonText = closeButtonText;
-    //    dialog.PrimaryButtonText = primaryButtonText;
-
-    //    // Default button based on if primary button exists
-    //    dialog.DefaultButton = string.IsNullOrWhiteSpace(primaryButtonText) ? ContentDialogButton.Close : ContentDialogButton.Primary;
-
-    //    dialog.Content = new SimpleTextDialog(message);
-
-    //    var result = await dialog.ShowAsync();
-    //    return result;
-    //}
-
-    ///// <summary>
-    ///// Show a simple popup with a message and an OK button.
-    ///// </summary>
-    ///// <param name="message"></param>
-    ///// <param name="title"></param>
-    //public async void ShowSimplePopup(string message, string title = "")
-    //{
-    //    await GetPopupResult(message, title, "OK", "");
-    //}
-
-    //public void ShowWarningPopup(string message)
-    //{
-    //    //ContentDialog dialog = new ContentDialog();
-
-    //    //// XamlRoot must be set in the case of a ContentDialog running in a Desktop app
-    //    //dialog.XamlRoot = this.Content.XamlRoot;
-    //    //dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
-    //    //dialog.Title = "Warning";
-    //    //dialog.CloseButtonText = "OK";
-    //    //dialog.DefaultButton = ContentDialogButton.Close;
-
-    //    //dialog.Content = new SimpleTextDialog(message);
-
-    //    //var result = await dialog.ShowAsync();
-
-    //    ShowSimplePopup(message, "Warning");
-    //}
 
     /// <summary>
     /// Shows the popup asking the user to download or select AlyxLib location.
     /// </summary>
     public async void ShowIntroAlyxLibPopup()
     {
-        //ContentDialog dialog = new ContentDialog();
-
-        //// XamlRoot must be set in the case of a ContentDialog running in a Desktop app
-        //dialog.XamlRoot = this.Content.XamlRoot;
-        //dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
-        //dialog.Title = "Download AlyxLib";
-        //dialog.PrimaryButtonText = "Download AlyxLib";
-        //dialog.SecondaryButtonText = "Select AlyxLib Folder";
-        //dialog.CloseButtonText = "Cancel";
-        //dialog.DefaultButton = ContentDialogButton.Primary;
-
-        //dialog.Content = new SimpleTextDialog("AlyxLibDownloadPopup_Message".GetLocalized());
-
-        //var result = await dialog.ShowAsync();
-
         DialogResultWithData<SimpleTextDialog> result = await DialogHelper.ShowCustomPopupAsync(this,
             new SimpleTextDialog("AlyxLibDownloadPopup_Message".GetLocalized()),
             "Setup AlyxLib", "Download AlyxLib", "Select AlyxLib Folder", "Cancel");
@@ -776,15 +673,6 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
 
     public async void ShowPrivilegeWarningPopup()
     {
-        //ContentDialog dialog = new ContentDialog();
-        //dialog.XamlRoot = this.Content.XamlRoot;
-        //dialog.Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style;
-        //dialog.Title = "Administrator Privileges Required";
-        //dialog.CloseButtonText = "OK";
-        //dialog.DefaultButton = ContentDialogButton.Close;
-        //dialog.Content = new PrivilegeWarningDialog();
-        //await dialog.ShowAsync();
-
         await DialogHelper.ShowCustomPopupAsync(this, new PrivilegeWarningDialog(), "Administrator Privileges Required");
     }
 
@@ -797,7 +685,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         }
         else
         {
-            DialogHelper.ShowWarningPopup(this, $"Could not find addon {addonFlyout.Text} for some reason!");
+            DialogHelper.ShowWarningPopup(this, $"Could not find addon '{addonFlyout.Text}' for some reason!");
         }
     }
 
@@ -809,14 +697,6 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         {
             RootGrid.RequestedTheme = theme;
             Settings.Theme = theme.ToString();
-        }
-    }
-
-    private void AddonModName_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (AddonModNameTextBox.Text == "Test")
-        {
-            InstallOptionSoundEvent.ShowInfoBar(InfoBarSeverity.Warning, "A custom manifest for this addon already exists, this option will be skipped.");
         }
     }
 
@@ -900,7 +780,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
 
         DebugConsoleInfo($"Removing {desc} ...");
 
-        AlyxLibInstance.FileManager.UninstallAlyxLib(CurrentAddon, options);
+        AlyxLibInstance.FileManager.UninstallAlyxLibOptions(CurrentAddon, options);
 
 
     }
@@ -996,6 +876,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
     {
         var toggle = (ToggleMenuFlyoutItem)sender;
         Settings.VerboseConsole = toggle.IsChecked;
+        AlyxLibInstance.VerboseLogging = Settings.VerboseConsole;
     }
 
     private void MenuBarOpenWiki_Click(object sender, RoutedEventArgs e)
@@ -1021,16 +902,16 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
     /// < 0 = Local is newer
     /// </summary>
     /// <returns></returns>
-    private async Task<(int comparison, SemVersion localVersion, SemVersion remoteVersion)> GetAlyxLibVersionComparison()
+    private async Task<VersionComparisonResult> GetAlyxLibVersionComparison()
     {
         try
         {
-            return await AlyxLibInstance.VersionManager.CompareVersions();
+            return await AlyxLibInstance.VersionManager.CompareVersions(Settings.GitHubVersionFileUrl);
         }
         catch (Exception ex)
         {
-            DebugConsoleError(ex.Message);
-            return (0, new SemVersion(0), new SemVersion(0));
+            DebugConsoleException(ex);
+            return new VersionComparisonResult(0, new SemVersion(0), new SemVersion(0));
         }
     }
 
@@ -1039,22 +920,22 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
 
         try
         {
-            var (versionComparison, localVersion, remoteVersion) = await AlyxLibInstance.VersionManager.CompareVersions();
-            DebugConsoleVerbose($"Version diff: {versionComparison}");
+            var result = await AlyxLibInstance.VersionManager.CompareVersions(Settings.GitHubUrl);
+            DebugConsoleVerbose($"Version diff: {result.Comparison}");
             FileLogger.Log("User checked for AlyxLib updates");
-            if (versionComparison > 0)
+            if (result.RemoteIsNewer)
             {
-                DebugConsoleInfo($"Update available: {localVersion} -> {remoteVersion}");
-                var result = await DialogHelper.ShowPopupAsync(this, $"New version available!\nv{localVersion} -> v{remoteVersion}", "Update Available", "Download", "Cancel");
-                if (result == ContentDialogResult.Primary)
+                DebugConsoleInfo($"Update available: {result.LocalVersion} -> {result.RemoteVersion}");
+                var popupResult = await DialogHelper.ShowPopupAsync(this, $"New version available!\nv{result.LocalVersion} -> v{result.RemoteVersion}", "Update Available", "Download", "Cancel");
+                if (popupResult == ContentDialogResult.Primary)
                 {
                     DownloadAlyxLib();
                 }
             }
-            else if (versionComparison == 0)
+            else if (result.SameVersion)
             {
                 DebugConsoleInfo("AlyxLib is up to date.");
-                DialogHelper.ShowSimplePopup(this, $"You are up to date!\nLocal: v{localVersion}\nRemote: v{remoteVersion}", "Up To Date");
+                DialogHelper.ShowSimplePopup(this, $"You are up to date!\nLocal: v{result.LocalVersion} \nRemote: v {result.RemoteVersion}", "Up To Date");
             }
             else
             {
@@ -1134,37 +1015,10 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         }
     }
 
-    //private void MenuBarAddons_Opening(object? sender, object e)
-    //{
-    //    UpdateMenuBarAddonsList();
-    //}
-
-    //private void MenuBarAddons_PointerEntered(object sender, PointerRoutedEventArgs e)
-    //{
-    //    UpdateMenuBarAddonsList();
-    //}
-
     private void MenuBarAddons_GotFocus(object sender, RoutedEventArgs e)
     {
         UpdateMenuBarAddonsList();
     }
-
-    //private void MenuBarItem_PointerPressed(object sender, PointerRoutedEventArgs e)
-    //{
-    //    UpdateMenuBarAddonsList();
-    //}
-
-    //private void MenuBarAddons_FocusEngaged(Control sender, FocusEngagedEventArgs args)
-    //{
-    //    UpdateMenuBarAddonsList();
-    //}
-
-    //private void AddonModNameTextBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
-    //{
-    //    bool isLetter = (e.Key >= Windows.System.VirtualKey.A && e.Key <= Windows.System.VirtualKey.Z);
-
-    //    bool isUnderscore 
-    //}
 
     private const string ContextMenuKey = @"Software\Classes\Directory\shell\AlyxLibInstaller";
     private const string ContextMenuCommandKey = @"Software\Classes\Directory\shell\AlyxLibInstaller\command";

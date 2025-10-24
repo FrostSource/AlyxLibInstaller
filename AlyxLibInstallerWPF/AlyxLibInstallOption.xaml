@@ -1,0 +1,53 @@
+﻿<UserControl x:Class="AlyxLibInstallerWPF.AlyxLibInstallOption"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:AlyxLibInstallerWPF"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    
+    <Border Background="Transparent" MouseLeftButtonDown="Border_MouseLeftButtonDown">
+        <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+            <CheckBox x:Name="CheckBoxControl" 
+                  Content="{Binding CheckboxContent, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                  ToolTip="{Binding TooltipText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+
+            <!-- Grid for layout of the description text -->
+            <Grid Margin="30,0,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Label x:Name="DescriptionTextBlock" 
+                               Content="{Binding DescriptionText, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                               FontSize="12" 
+                               Target="{Binding ElementName=CheckBoxControl}"
+                               
+                               >
+                    <Label.ContentTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" TextWrapping="Wrap"/>
+                        </DataTemplate>
+                    </Label.ContentTemplate>
+                </Label>
+            </Grid>
+
+            <!-- Replace InfoBar with a Border/TextBlock combination -->
+            <!--<Border x:Name="OptionInfoBar" 
+                Background="LightYellow" 
+                BorderBrush="Orange" 
+                BorderThickness="1" 
+                Padding="4" 
+                Margin="0,4,0,0" 
+                Visibility="Collapsed">
+                <TextBlock x:Name="OptionInfoBarText" Text="" />
+            </Border>-->
+            <local:InfoBar x:Name="OptionInfoBar"
+                           IsOpen="False"
+                           Severity="Warning"
+                           Message="" />
+        </StackPanel>
+    </Border>
+
+</UserControl>

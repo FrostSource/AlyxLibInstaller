@@ -1,0 +1,310 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:AlyxLibInstallerWPF">
+
+  <!-- InfoBar Button Style -->
+  <Style x:Key="InfoBarActionButtonStyle" TargetType="ButtonBase">
+    <Setter Property="Background" Value="#0078D4"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Padding" Value="11,5,11,6"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="MinWidth" Value="120"/>
+    <Setter Property="MinHeight" Value="32"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ButtonBase">
+          <Border x:Name="Border"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="4"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Border" Property="Background" Value="#106EBE"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="Border" Property="Background" Value="#005A9E"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Border" Property="Background" Value="#F3F2F1"/>
+              <Setter Property="Foreground" Value="#A19F9D"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style TargetType="{x:Type local:InfoBar}">
+    <Setter Property="MinHeight" Value="36"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type local:InfoBar}">
+          <Border x:Name="RootBorder"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="1"
+                  CornerRadius="4">
+            <Grid Margin="12,10,8,10">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+
+              <!-- Icon -->
+              <Viewbox x:Name="IconBox"
+                       Grid.Column="0"
+                       Width="16"
+                       Height="16"
+                       Margin="0,0,12,0"
+                       VerticalAlignment="Top">
+                <Canvas Width="16" Height="16">
+                  <Path x:Name="IconPath"
+                        Fill="{TemplateBinding Foreground}"
+                        Data="{TemplateBinding IconSource}"/>
+                </Canvas>
+              </Viewbox>
+
+              <!-- Content Area with smart layout -->
+              <Grid Grid.Column="1" x:Name="ContentGrid">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto"/>
+                  <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- First row: Title, Message, and potentially Action Button (when inline) -->
+                <StackPanel x:Name="InlinePanel"
+                           Grid.Row="0"
+                           Orientation="Horizontal"
+                           VerticalAlignment="Center">
+                  <TextBlock x:Name="TitleText"
+                            Text="{TemplateBinding Title}"
+                            FontWeight="SemiBold"
+                            TextWrapping="NoWrap"
+                            VerticalAlignment="Center"
+                            Margin="0"/>
+
+                  <TextBlock x:Name="MessageTextInline"
+                            Text="{TemplateBinding Message}"
+                            TextWrapping="NoWrap"
+                            VerticalAlignment="Center"
+                            Margin="8,0,0,0"
+                             Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+
+                  <ContentPresenter x:Name="ActionButtonInline"
+                                   Content="{TemplateBinding ActionButton}"
+                                   Margin="12,0,0,0"
+                                   VerticalAlignment="Center"
+                                   Visibility="Collapsed"/>
+                </StackPanel>
+
+                <!-- Wrapped message (shows when message doesn't fit inline) -->
+                <TextBlock x:Name="MessageTextWrapped"
+                          Grid.Row="1"
+                          Text="{TemplateBinding Message}"
+                          TextWrapping="Wrap"
+                          Margin="0,4,0,0"
+                          Visibility="Collapsed"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}"/>
+
+                <!-- Second row: Action Button (when not inline) and Custom Content -->
+                <StackPanel Grid.Row="1" Margin="0,8,0,0" x:Name="BlockContentPanel" Visibility="Collapsed">
+                  <ContentPresenter x:Name="ActionButtonBlock"
+                                   Content="{TemplateBinding ActionButton}"
+                                   Margin="0,0,0,0"/>
+                  <ContentPresenter x:Name="ContentPresenter"
+                                   Content="{TemplateBinding Content}"
+                                   Margin="0,8,0,0"/>
+                </StackPanel>
+              </Grid>
+
+              <!-- Close Button -->
+              <Button x:Name="PART_CloseButton"
+                     Grid.Column="2"
+                     Width="32"
+                     Height="32"
+                     Margin="8,0,0,0"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     VerticalAlignment="Top"
+                     Padding="0"
+                     Foreground="{TemplateBinding Foreground}">
+                <Button.Template>
+                  <ControlTemplate TargetType="Button">
+                    <Border x:Name="ButtonBorder"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="4">
+                      <Viewbox Width="12" Height="12">
+                        <Canvas Width="12" Height="12">
+                          <Path Data="M 1.5,1.5 L 10.5,10.5 M 10.5,1.5 L 1.5,10.5"
+                                Stroke="{TemplateBinding Foreground}"
+                                StrokeThickness="1.2"
+                                StrokeStartLineCap="Round"
+                                StrokeEndLineCap="Round"/>
+                        </Canvas>
+                      </Viewbox>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                      <Trigger Property="IsMouseOver" Value="True">
+                        <Setter TargetName="ButtonBorder" Property="Background">
+                          <Setter.Value>
+                            <SolidColorBrush Color="White" Opacity="0.1"/>
+                          </Setter.Value>
+                        </Setter>
+                      </Trigger>
+                      <Trigger Property="IsPressed" Value="True">
+                        <Setter TargetName="ButtonBorder" Property="Background">
+                          <Setter.Value>
+                            <SolidColorBrush Color="White" Opacity="0.2"/>
+                          </Setter.Value>
+                        </Setter>
+                      </Trigger>
+                    </ControlTemplate.Triggers>
+                  </ControlTemplate>
+                </Button.Template>
+              </Button>
+            </Grid>
+          </Border>
+
+          <ControlTemplate.Triggers>
+            <!-- Hide title if empty -->
+            <Trigger Property="Title" Value="">
+              <Setter TargetName="TitleText" Property="Visibility" Value="Collapsed"/>
+            </Trigger>
+            <Trigger Property="Title" Value="{x:Null}">
+              <Setter TargetName="TitleText" Property="Visibility" Value="Collapsed"/>
+            </Trigger>
+
+            <!-- Hide message if empty -->
+            <Trigger Property="Message" Value="">
+              <Setter TargetName="MessageTextInline" Property="Visibility" Value="Collapsed"/>
+              <Setter TargetName="MessageTextWrapped" Property="Visibility" Value="Collapsed"/>
+            </Trigger>
+            <Trigger Property="Message" Value="{x:Null}">
+              <Setter TargetName="MessageTextInline" Property="Visibility" Value="Collapsed"/>
+              <Setter TargetName="MessageTextWrapped" Property="Visibility" Value="Collapsed"/>
+            </Trigger>
+
+            <!-- Show wrapped message for long text (this is a simplification - WinUI3 measures text dynamically) -->
+            <!-- For now, we'll show wrapped if message is longer than ~60 chars as an approximation -->
+            <DataTrigger Binding="{Binding Message.Length, RelativeSource={RelativeSource Self}, Converter={x:Static local:GreaterThanConverter.Instance}, ConverterParameter=60}" Value="True">
+              <Setter TargetName="MessageTextInline" Property="Visibility" Value="Collapsed"/>
+              <Setter TargetName="MessageTextWrapped" Property="Visibility" Value="Visible"/>
+              <Setter TargetName="BlockContentPanel" Property="Visibility" Value="Visible"/>
+              <Setter TargetName="ActionButtonBlock" Property="Visibility" Value="Visible"/>
+              <Setter TargetName="ActionButtonInline" Property="Visibility" Value="Collapsed"/>
+            </DataTrigger>
+
+            <!-- Show inline action button for short messages -->
+            <MultiDataTrigger>
+              <MultiDataTrigger.Conditions>
+                <Condition Binding="{Binding ActionButton, RelativeSource={RelativeSource Self}, Converter={x:Static local:IsNotNullConverter.Instance}}" Value="True"/>
+                <Condition Binding="{Binding Message.Length, RelativeSource={RelativeSource Self}, Converter={x:Static local:GreaterThanConverter.Instance}, ConverterParameter=60}" Value="False"/>
+              </MultiDataTrigger.Conditions>
+              <Setter TargetName="ActionButtonInline" Property="Visibility" Value="Visible"/>
+              <Setter TargetName="ActionButtonBlock" Property="Visibility" Value="Collapsed"/>
+            </MultiDataTrigger>
+
+            <!-- Show block content panel when we have action button or custom content -->
+            <Trigger Property="ActionButton" Value="{x:Null}">
+              <Setter TargetName="ActionButtonInline" Property="Visibility" Value="Collapsed"/>
+              <Setter TargetName="ActionButtonBlock" Property="Visibility" Value="Collapsed"/>
+            </Trigger>
+
+            <Trigger Property="Content" Value="{x:Null}">
+              <Setter TargetName="ContentPresenter" Property="Visibility" Value="Collapsed"/>
+            </Trigger>
+
+            <!-- Show block panel if we have custom content -->
+            <DataTrigger Binding="{Binding Content, RelativeSource={RelativeSource Self}, Converter={x:Static local:IsNotNullConverter.Instance}}" Value="True">
+              <Setter TargetName="BlockContentPanel" Property="Visibility" Value="Visible"/>
+            </DataTrigger>
+
+            <!-- IsClosable -->
+            <Trigger Property="IsClosable" Value="False">
+              <Setter TargetName="PART_CloseButton" Property="Visibility" Value="Collapsed"/>
+            </Trigger>
+
+            <!-- Severity: Informational (Blue) - Dark Theme Colors -->
+            <Trigger Property="Severity" Value="Informational">
+              <Setter Property="Background" Value="{DynamicResource SystemFillColorAttentionBackgroundBrush}"/>
+              <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorAttentionBrush}"/>
+              <Setter Property="Foreground" Value="#FFFFFF"/>
+              <Setter TargetName="IconPath" Property="Data"
+                      Value="M8,0 C12.418,0 16,3.582 16,8 C16,12.418 12.418,16 8,16 C3.582,16 0,12.418 0,8 C0,3.582 3.582,0 8,0 Z M8,1.5 C4.41,1.5 1.5,4.41 1.5,8 C1.5,11.59 4.41,14.5 8,14.5 C11.59,14.5 14.5,11.59 14.5,8 C14.5,4.41 11.59,1.5 8,1.5 Z M8,10.5 C8.552,10.5 9,10.948 9,11.5 C9,12.052 8.552,12.5 8,12.5 C7.448,12.5 7,12.052 7,11.5 C7,10.948 7.448,10.5 8,10.5 Z M8,3.5 C8.414,3.5 8.75,3.836 8.75,4.25 L8.75,9.25 C8.75,9.664 8.414,10 8,10 C7.586,10 7.25,9.664 7.25,9.25 L7.25,4.25 C7.25,3.836 7.586,3.5 8,3.5 Z"/>
+              <Setter TargetName="IconPath" Property="Fill" Value="#60CDFF"/>
+            </Trigger>
+
+            <!-- Severity: Success (Green) - Dark Theme Colors -->
+            <Trigger Property="Severity" Value="Success">
+              <Setter Property="Background" Value="{DynamicResource SystemFillColorSuccessBackgroundBrush}"/>
+                            <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorSuccessBrush}"/>
+              <Setter Property="Foreground" Value="#FFFFFF"/>
+              <Setter TargetName="IconPath" Property="Data"
+                      Value="M8,0 C12.418,0 16,3.582 16,8 C16,12.418 12.418,16 8,16 C3.582,16 0,12.418 0,8 C0,3.582 3.582,0 8,0 Z M8,1.5 C4.41,1.5 1.5,4.41 1.5,8 C1.5,11.59 4.41,14.5 8,14.5 C11.59,14.5 14.5,11.59 14.5,8 C14.5,4.41 11.59,1.5 8,1.5 Z M11.854,5.146 C12.049,5.341 12.049,5.659 11.854,5.854 L7.354,10.354 C7.159,10.549 6.841,10.549 6.646,10.354 L4.146,7.854 C3.951,7.659 3.951,7.341 4.146,7.146 C4.341,6.951 4.659,6.951 4.854,7.146 L7,9.293 L11.146,5.146 C11.341,4.951 11.659,4.951 11.854,5.146 Z"/>
+                            <Setter TargetName="IconPath" Property="Fill" Value="{DynamicResource SystemFillColorSuccessBrush}"/>
+            </Trigger>
+
+            <!-- Severity: Warning (Yellow/Orange) - Dark Theme Colors -->
+            <Trigger Property="Severity" Value="Warning">
+              <Setter Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}"/>
+                            <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCautionBrush}"/>
+              <Setter Property="Foreground" Value="#FFFFFF"/>
+              <Setter TargetName="IconPath" Property="Data"
+                      Value="M7.429,1.952 C7.666,1.539 8.334,1.539 8.571,1.952 L15.38,13.548 C15.621,13.968 15.317,14.5 14.809,14.5 L1.191,14.5 C0.683,14.5 0.379,13.968 0.62,13.548 Z M8,12 C8.552,12 9,11.552 9,11 C9,10.448 8.552,10 8,10 C7.448,10 7,10.448 7,11 C7,11.552 7.448,12 8,12 Z M8,5 C8.414,5 8.75,5.336 8.75,5.75 L8.75,8.75 C8.75,9.164 8.414,9.5 8,9.5 C7.586,9.5 7.25,9.164 7.25,8.75 L7.25,5.75 C7.25,5.336 7.586,5 8,5 Z"/>
+                            <Setter TargetName="IconPath" Property="Fill" Value="{DynamicResource SystemFillColorCautionBrush}"/>
+            </Trigger>
+
+            <!-- Severity: Error (Red) - Dark Theme Colors -->
+            <Trigger Property="Severity" Value="Error">
+              <Setter Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}"/>
+              <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}"/>
+              <Setter Property="Foreground" Value="#FFFFFF"/>
+              <Setter TargetName="IconPath" Property="Data"
+                      Value="M8,0 C12.418,0 16,3.582 16,8 C16,12.418 12.418,16 8,16 C3.582,16 0,12.418 0,8 C0,3.582 3.582,0 8,0 Z M8,1.5 C4.41,1.5 1.5,4.41 1.5,8 C1.5,11.59 4.41,14.5 8,14.5 C11.59,14.5 14.5,11.59 14.5,8 C14.5,4.41 11.59,1.5 8,1.5 Z M10.854,5.146 C11.049,5.341 11.049,5.659 10.854,5.854 L8.707,8 L10.854,10.146 C11.049,10.341 11.049,10.659 10.854,10.854 C10.659,11.049 10.341,11.049 10.146,10.854 L8,8.707 L5.854,10.854 C5.659,11.049 5.341,11.049 5.146,10.854 C4.951,10.659 4.951,10.341 5.146,10.146 L7.293,8 L5.146,5.854 C4.951,5.659 4.951,5.341 5.146,5.146 C5.341,4.951 5.659,4.951 5.854,5.146 L8,7.293 L10.146,5.146 C10.341,4.951 10.659,4.951 10.854,5.146 Z"/>
+              <Setter TargetName="IconPath" Property="Fill" Value="{DynamicResource SystemFillColorCriticalBrush}"/>
+            </Trigger>
+
+            <!-- Apply button style to ActionButton -->
+            <DataTrigger Binding="{Binding ActionButton, RelativeSource={RelativeSource Self}, Converter={x:Static local:IsNotNullConverter.Instance}}" Value="True">
+              <Setter TargetName="ActionButtonInline" Property="ContentTemplate">
+                <Setter.Value>
+                  <DataTemplate>
+                    <ContentPresenter Content="{Binding}">
+                      <ContentPresenter.Resources>
+                        <Style TargetType="Button" BasedOn="{StaticResource InfoBarActionButtonStyle}"/>
+                        <Style TargetType="ButtonBase" BasedOn="{StaticResource InfoBarActionButtonStyle}"/>
+                      </ContentPresenter.Resources>
+                    </ContentPresenter>
+                  </DataTemplate>
+                </Setter.Value>
+              </Setter>
+              <Setter TargetName="ActionButtonBlock" Property="ContentTemplate">
+                <Setter.Value>
+                  <DataTemplate>
+                    <ContentPresenter Content="{Binding}">
+                      <ContentPresenter.Resources>
+                        <Style TargetType="Button" BasedOn="{StaticResource InfoBarActionButtonStyle}"/>
+                        <Style TargetType="ButtonBase" BasedOn="{StaticResource InfoBarActionButtonStyle}"/>
+                      </ContentPresenter.Resources>
+                    </ContentPresenter>
+                  </DataTemplate>
+                </Setter.Value>
+              </Setter>
+            </DataTrigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+</ResourceDictionary>

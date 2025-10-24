@@ -112,5 +112,10 @@ namespace FileDeployment.Logging
         {
             return new LogEntry(operation, rule, exception) { Type = LogEntryType.Warning };
         }
+
+        public static LogEntry Info(FileOperation operation, string message)
+        {
+            return new LogEntry(operation, message) { Type = LogEntryType.Info };
+        }
     }
 }

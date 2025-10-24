@@ -67,10 +67,12 @@ namespace FileDeployment
             int success = 0, fail = 0;
             foreach (FileOperation operation in operations)
             {
-                if (operation.Execute())
-                    success++;
-                else
-                    fail++;
+                switch (operation.Execute())
+                {
+                    case FileOperationExecutionResult.Success: success++; break;
+                    case FileOperationExecutionResult.Failed:  fail++; break;
+                    case FileOperationExecutionResult.Skipped: break;
+                }
             }
 
             return new DeploymentResult(success, fail);
@@ -118,7 +120,7 @@ namespace FileDeployment
             return results;
         }
 
-        public DeploymentResult UndeployCategory(string category)
+        public DeploymentResult UndeployCategory(string category, bool ignoreRemoveFlags = false)
         {
             if (!Categories.ContainsKey(category))
                 throw new KeyNotFoundException($"Category '{category}' not found in manifest");
@@ -127,42 +129,71 @@ namespace FileDeployment
             List<FileOperation> operations = Categories[category];
             foreach (FileOperation operation in operations)
             {
-                if (operation.Remove == true)
+                if (operation.Remove == true || ignoreRemoveFlags)
                 {
-                    if (RemoveChangedFiles || operation.DeployedFileIsUnchanged())
+                    if (!operation.DeployedFileExists())
                     {
-                        string deploymentPath = operation.GetDeploymentPath();
-                        if (!string.IsNullOrEmpty(deploymentPath))
+                        Log(LogEntry.Info(operation, "File does not exist, skipping..."));
+                        continue;
+                    }
+
+                    if (!RemoveChangedFiles && !operation.DeployedFileIsUnchanged())
+                    {
+                        Log(LogEntry.Info(operation, "File is modified, skipping..."));
+                        fail++;
+                        continue;
+                    }
+
+                    string deploymentPath = operation.GetDeploymentPath();
+                    if (!string.IsNullOrEmpty(deploymentPath))
+                    {
+                        try
                         {
-                            try
+                            string? containingFolder = FileUtils.GetContainingFolder(deploymentPath);
+
+                            if (File.Exists(deploymentPath)) { File.Delete(deploymentPath); }
+                            else if (Directory.Exists(deploymentPath)) { Directory.Delete(deploymentPath); }
+                            Log(new LogEntry(operation, $"Removed path '{deploymentPath}'") { Type = LogEntryType.Info });
+
+                            // Remove empty parent folder
+                            if (!string.IsNullOrEmpty(containingFolder)
+                                && Path.GetPathRoot(containingFolder) != Path.GetFullPath(containingFolder)
+                                && Directory.GetFileSystemEntries(containingFolder).Length == 0)
                             {
-                                if (File.Exists(deploymentPath)) { File.Delete(deploymentPath); }
-                                else if (Directory.Exists(deploymentPath)) { Directory.Delete(deploymentPath); }
-                                Log(new LogEntry(operation, $"Removed path '{deploymentPath}'") { Type = LogEntryType.Info });
-                                success++;
+                                try
+                                {
+                                    Directory.Delete(containingFolder);
+                                    Log(LogEntry.Info(operation, $"Removed empty parent folder '{containingFolder}'"));
+                                }
+                                catch (Exception ex)
+                                {
+                                    Log(LogEntry.Error(operation, $"Failed to remove empty parent folder '{containingFolder}'", ex));
+                                }
                             }
-                            catch (Exception ex)
-                            {
-                                Log(LogEntry.Error(operation, $"Failed to remove path '{deploymentPath}'", ex));
-                                fail++;
-                            }
+
+                            success++;
+                        }
+                        catch (Exception ex)
+                        {
+                            Log(LogEntry.Error(operation, $"Failed to remove path '{deploymentPath}'", ex));
+                            fail++;
                         }
                     }
                 }
                 else
                 {
-                    Log(LogEntry.Warning(operation, "Operation is not marked for removal in deployment manifest, skipping..."));
+                    Log(LogEntry.Info(operation, "Operation is not marked for removal in deployment manifest, skipping..."));
                 }
             }
             
             return new DeploymentResult(success, fail);
         }
 
-        public bool TryUndeployCategory(string category, out DeploymentResult result)
+        public bool TryUndeployCategory(string category, out DeploymentResult result, bool ignoreRemoveFlags = false)
         {
             try
             {
-                result = UndeployCategory(category);
+                result = UndeployCategory(category, ignoreRemoveFlags: ignoreRemoveFlags);
                 return true;
             }
             catch

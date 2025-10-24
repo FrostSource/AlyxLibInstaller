@@ -1,0 +1,54 @@
+﻿<UserControl x:Class="AlyxLibInstallerWPF.PromptDialog"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:AlyxLibInstallerWPF" xmlns:viewmodels="clr-namespace:AlyxLibInstallerWPF.ViewModels" d:DataContext="{d:DesignInstance Type=viewmodels:PromptDialogViewModel}"
+      xmlns:converters="clr-namespace:AlyxLibInstallerWPF.Converters"
+      mc:Ignorable="d" 
+      >
+    <UserControl.Resources>
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+        <converters:InvertBoolToVisibilityConverter x:Key="InvertBoolToVisibilityConverter" />
+    </UserControl.Resources>
+
+    <Grid>
+        <StackPanel Orientation="Vertical">
+            
+            <!--Message-->
+            <TextBlock Text="{Binding Message}"
+                       Visibility="{Binding Message, Converter={StaticResource StringToVisibilityConverter}}"
+                       Margin="0,0,0,8"
+                       Width="{Binding DialogWidth}"
+                       MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=Grid}}"
+                       TextWrapping="Wrap"
+                       />
+
+            <!--Input text box-->
+            <StackPanel Orientation="Vertical"
+                        Visibility="{Binding HasTextBox, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        >
+                <TextBox Text="{Binding TextBoxText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         local:TextBoxHelper.Placeholder="{Binding TextBoxPlaceholderText}"
+                         x:Name="InputBox"
+                         />
+                <TextBlock Text="{Binding TextBoxInvalidMessage}"
+                       Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                       FontSize="11"
+                       Padding="5,5,0,0"
+                       TextWrapping="Wrap"
+                       Width="{Binding ActualWidth, ElementName=InputBox}"
+                       Visibility="{Binding TextBoxTextIsValid, Converter={StaticResource InvertBoolToVisibilityConverter}}"
+                       />
+            </StackPanel>
+
+            <!--Check box-->
+            <CheckBox Content="{Binding CheckBoxText}"
+                      IsChecked="{Binding IsCheckBoxChecked, Mode=TwoWay}"
+                      Visibility="{Binding HasCheckBox, Converter={StaticResource BooleanToVisibilityConverter}}"
+                      Margin="0,8,0,0"
+                      />
+            
+        </StackPanel>
+    </Grid>
+</UserControl>

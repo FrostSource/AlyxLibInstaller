@@ -1,0 +1,99 @@
+﻿<Application x:Class="AlyxLibInstallerWPF.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:AlyxLibInstallerWPF"
+             xmlns:converters="clr-namespace:AlyxLibInstallerWPF.Converters"
+             
+             >
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            
+            <converters:AppThemeToFluentThemeConverter x:Key="AppThemeToFluentThemeConverter"/>
+
+            <!--<Style x:Key="PlaceholderTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TextBox">
+                            <Grid>
+                                <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                SnapsToDevicePixels="True">
+                                    <ScrollViewer x:Name="PART_ContentHost"
+                                        Focusable="false"
+                                        HorizontalScrollBarVisibility="Hidden"
+                                        VerticalScrollBarVisibility="Hidden"/>
+                                </Border>
+                                <TextBlock x:Name="placeholder"
+                                   Text="{TemplateBinding local:TextBoxHelper.Placeholder}"
+                                   Foreground="Gray"
+                                   FontStyle="Italic"
+                                   IsHitTestVisible="False"
+                                   Padding="{TemplateBinding Padding}"
+                                   Margin="2,0,0,0"
+                                   VerticalAlignment="Center"
+                                   Visibility="Collapsed"/>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <MultiTrigger>
+                                    <MultiTrigger.Conditions>
+                                        <Condition Property="Text" Value=""/>
+                                        --><!--<Condition Property="IsFocused" Value="False"/>--><!--
+                                    </MultiTrigger.Conditions>
+                                    <Setter TargetName="placeholder" Property="Visibility" Value="Visible"/>
+                                </MultiTrigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>-->
+
+            <!-- Normal (Info) Color -->
+            <Color x:Key="DebugConsoleNormalTextColor">#AAAAAA</Color>
+            <!-- Light Gray for both themes -->
+
+            <!-- Verbose Color -->
+            <Color x:Key="DebugConsoleVerboseTextColor">#5C5C5C</Color>
+
+            <!-- Warning Color -->
+            <Color x:Key="DebugConsoleWarningTextColor">#FFA500</Color>
+            <!-- Amber for both themes -->
+
+            <!-- Verbose Warning Color -->
+            <Color x:Key="DebugConsoleVerboseWarningTextColor">#FFB74D</Color>
+            <!-- Lighter Amber for verbose warnings -->
+
+            <!-- Info Color -->
+            <Color x:Key="DebugConsoleInfoTextColor">#42A5F5</Color>
+            <!-- Soft Blue for informational messages -->
+
+            <!-- Verbose Info Color -->
+            <Color x:Key="DebugConsoleVerboseInfoTextColor">#90CAF9</Color>
+            <!-- Muted Blue for verbose informational messages -->
+
+            <!-- Error Color -->
+            <Color x:Key="DebugConsoleErrorTextColor">#F44336</Color>
+            <!-- Bright Red for both themes -->
+
+            <!-- Verbose Error Color -->
+            <Color x:Key="DebugConsoleVerboseErrorTextColor">#E57373</Color>
+            <!-- Softer Red for verbose error messages -->
+
+            <!-- Success Color -->
+            <Color x:Key="DebugConsoleSuccessTextColor">#4CAF50</Color>
+            <!-- Standard Green for success messages -->
+
+            <!-- Verbose Success Color -->
+            <Color x:Key="DebugConsoleVerboseSuccessTextColor">#81C784</Color>
+            <!-- Softer Green for verbose success messages -->
+
+            <SolidColorBrush x:Key="WarningTextBrush" Color="{StaticResource DebugConsoleWarningTextColor}" />
+            <SolidColorBrush x:Key="ErrorTextBrush" Color="{StaticResource DebugConsoleErrorTextColor}" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

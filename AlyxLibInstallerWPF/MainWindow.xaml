@@ -1,0 +1,327 @@
+﻿<Window x:Class="AlyxLibInstallerWPF.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:AlyxLibInstallerWPF"
+        xmlns:vm="clr-namespace:AlyxLibInstallerShared.ViewModels;assembly=AlyxLibInstallerShared"
+        xmlns:models="clr-namespace:AlyxLibInstallerShared.Models;assembly=AlyxLibInstallerShared"
+        xmlns:converters="clr-namespace:AlyxLibInstallerWPF.Converters"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
+        Width="1024" Height="560" Title="{Binding WindowTitle}" MinHeight="300" MinWidth="350"
+        x:Name="Root"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+mc:Ignorable="d"
+
+
+    d:DataContext="{d:DesignInstance Type=vm:AlyxLibInstallerSharedViewModel, IsDesignTimeCreatable=False}"
+        >
+    <Window.Resources>
+        <!-- Converters -->
+        <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter" />
+        <converters:BoolToFloatConverter x:Key="BoolToFloatConverter" />
+        <converters:InvertBoolToFloatConverter x:Key="InvertBoolToFloatConverter" />
+        <converters:BoolToBoolNullableConverter x:Key="BoolToBoolNullableConverter" />
+        <converters:CountToBoolConverter x:Key="CountToBoolConverter" />
+        <converters:EscapeUnderscoreConverter x:Key="EscapeUnderscoreConverter" />
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <converters:InvertBoolToVisibilityConverter x:Key="InvertBoolToVisibilityConverter" />
+        <converters:InvertedBoolConverter x:Key="InvertedBoolConverter" />
+
+        <!-- Theme collection -->
+
+        <ObjectDataProvider MethodName="GetValues"
+                            ObjectType="{x:Type sys:Enum}"
+                            x:Key="ThemeNames">
+            <ObjectDataProvider.MethodParameters>
+                <x:Type TypeName="models:AppTheme"/>
+            </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider>
+        
+        <!-- Define the context menu once -->
+        <ContextMenu x:Key="UninstallContextMenu">
+            <MenuItem Header="Remove Unticked Items" Command="{Binding UninstallAlyxLibCommand}" />
+            <MenuItem Header="Remove All AlyxLib Files" Command="{Binding RemoveAllAlyxLibFilesCommand}" />
+        </ContextMenu>
+    </Window.Resources>
+    <!--<Window.DataContext>-->
+        <!--<vm:AlyxLibInstallerSharedViewModel/>-->
+    <!--</Window.DataContext>-->
+    
+    <Grid>
+        <Grid x:Name="RootGrid" Visibility="{Binding IsInitializing, Converter={StaticResource InvertBoolToVisibilityConverter}}" >
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Menu Bar -->
+            <Menu Grid.Row="1" x:Name="MainMenuBar">
+                <MenuItem Header="File">
+                    <MenuItem Header="Addons" x:Name="MenuBarAddons" ItemsSource="{Binding LocalAddons}" IsEnabled="{Binding LocalAddons.Count, Converter={StaticResource CountToBoolConverter}}">
+                        <MenuItem.ItemContainerStyle>
+                            <Style TargetType="MenuItem">
+                                <Setter Property="Header" Value="{Binding LocalAddon.Name, Mode=OneWay, Converter={StaticResource EscapeUnderscoreConverter}}" />
+                                <Setter Property="IsCheckable" Value="True" />
+                                <Setter Property="IsChecked" Value="{Binding IsSelected, Mode=TwoWay}" />
+                                <Setter Property="Command" Value="{Binding DataContext.SelectAddonCommand, RelativeSource={RelativeSource AncestorType=Menu}}" />
+                                <Setter Property="CommandParameter" Value="{Binding}" />
+                            </Style>
+                        </MenuItem.ItemContainerStyle>
+                    </MenuItem>
+                    <MenuItem Header="New Addon..." Command="{Binding NewAddonCommand}" />
+                    <MenuItem Header="Open Addon..." Command="{Binding PickAddonCommand}" />
+                    <Separator/>
+                    <MenuItem Header="Download AlyxLib" Command="{Binding DownloadAlyxLibCommand}" />
+                    <MenuItem Header="Select AlyxLib Path" Command="{Binding PickAlyxLibPathCommand}" />
+                    <MenuItem Header="Open AlyxLib Path" Command="{Binding OpenAlyxLibPathCommand}" />
+                    <Separator/>
+                    <MenuItem Header="Exit" Click="MenuBarExit_Click"/>
+                </MenuItem>
+                <MenuItem Header="Addon" IsEnabled="{Binding IsAddonSelected}">
+                    <MenuItem Header="Open Content Folder" Command="{Binding OpenAddonContentFolderCommand}" />
+                    <MenuItem Header="Open Game Folder" Command="{Binding OpenAddonGameFolderCommand}" />
+                    <Separator/>
+                    <MenuItem Header="Manage Removal List" Command="{Binding ShowFileRemovalEditorCommand}" />
+                </MenuItem>
+                <MenuItem Header="Settings">
+                    <MenuItem Header="Remember Last Addon" x:Name="MenuBarRememberLastAddon" IsCheckable="True" IsChecked="{Binding Settings.RememberLastAddon, Mode=TwoWay}" StaysOpenOnClick="True" />
+                    <MenuItem Header="Verbose Logging" x:Name="MenuBarVerboseLogging" IsCheckable="True" IsChecked="{Binding Settings.VerboseConsole, Mode=TwoWay}" StaysOpenOnClick="True" />
+                    <MenuItem StaysOpenOnClick="True" IsCheckable="True" IsChecked="{Binding Settings.AutoDeleteLogFiles, Mode=TwoWay}">
+                        <MenuItem.Header>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Max Log Files" ToolTip="When there are more than this number of log files, the oldest ones will be deleted" VerticalAlignment="Center" Padding="0,0,4,0" />
+                                <TextBox Grid.Column="1" Text="{Binding Settings.MaxLogFiles, Mode=TwoWay}"  HorizontalAlignment="Right" Width="75" PreviewTextInput="TextBox_PreviewTextInput" />
+                            </Grid>
+                        </MenuItem.Header>
+                    </MenuItem>
+                    <Separator/>
+                    <MenuItem Header="Theme" x:Name="MenuBarThemes" ItemsSource="{Binding SelectableThemes}">
+                        <MenuItem.ItemContainerStyle>
+                            <Style TargetType="MenuItem">
+                                <Setter Property="Header" Value="{Binding Name, Mode=OneWay}" />
+                                <Setter Property="IsCheckable" Value="True" />
+                                <Setter Property="IsChecked" Value="{Binding IsSelected, Mode=TwoWay}" />
+                                <!--<Setter Property="Command" Value="{Binding SelectThemeCommand, RelativeSource={RelativeSource AncestorType=Window}}" />-->
+                                <!--<Setter Property="CommandParameter" Value="{Binding}" />-->
+                            </Style>
+                        </MenuItem.ItemContainerStyle>
+                    </MenuItem>
+                    <MenuItem Header="Clear Console" Click="ClearDebugConsole_Click"/>
+                    <Separator/>
+                    <MenuItem Header="Add Explorer Context Menu" Command="{Binding RegisterExplorerContextMenuCommand}" />
+                    <MenuItem Header="Remove Explorer Context Menu" Command="{Binding UnregisterExplorerContextMenuCommand}" />
+                </MenuItem>
+                <MenuItem Header="Help">
+                    <!--TODO: Change to mkdocs-->
+                    <MenuItem Header="Open Wiki In Browser" Command="{Binding OpenAlyxLibWikiCommand}" />
+                    <MenuItem Header="Open GitHub In Browser" Command="{Binding OpenAlyxLibRepoCommand}" />
+                    <Separator/>
+                    <MenuItem Header="Check For Updates" Command="{Binding CheckForUpdatesCommand}" />
+                    <MenuItem Header="About" Command="{Binding ShowAboutPopupCommand}"/>
+                    <MenuItem Header="Log thing" Click="MenuItem_Click"/>
+                </MenuItem>
+            </Menu>
+
+            <!-- Main Content -->
+            <Grid Grid.Row="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- InfoBar substitute -->
+                <!--<TextBlock x:Name="AlyxLibNotFoundInfoBar" Grid.Row="0" Text="AlyxLib path could not be found! Please use File->Select AlyxLib Path"
+                           Foreground="Red" Visibility="Visible" Margin="10"/>
+                <TextBlock x:Name="AlyxLibTopInfoBar" Grid.Row="0" Text="" Foreground="Blue" Visibility="Collapsed" Margin="10"/>-->
+                <StackPanel Grid.Row="0" Orientation="Vertical">
+                    <local:InfoBar x:Name="AlyxLibNotFoundInfoBar"
+                               Message="AlyxLib path could not be found! Please use File->Select AlyxLib Path"
+                               Severity="Error"
+                               IsClosable="False"
+                               IsOpen="{Binding AlyxLibExists, Converter={StaticResource InvertedBoolConverter}}"
+                               />
+                    <local:InfoBar x:Name="AlyxLibTopInfoBar" Message="" Severity="Informational" IsClosable="True" IsOpen="False" />
+
+                    <local:InfoBar 
+                               Message="Remember to Install again after uploading your addon to the workshop!"
+                               Severity="Success"
+                               IsClosable="True"
+                               IsOpen="{Binding AlyxLibRemovedFromAddonForUpload}"
+                               />
+                </StackPanel>
+
+
+
+                <Border Grid.Row="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" Margin="10" CornerRadius="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="0.75*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left panel -->
+                    <ScrollViewer Grid.Column="0" Grid.Row="0" VerticalScrollBarVisibility="Auto" IsEnabled="{Binding IsAddonSelected}" >
+                        <StackPanel Margin="16">
+
+                            <Label Content="Mod script folder name:" Margin="0,0,0,8" Target="{Binding ElementName=AddonModNameTextBox}" />
+                            <TextBox x:Name="AddonModNameTextBox" local:TextBoxHelper.Placeholder="{Binding DefaultModFolderName}" Margin="0,0,0,0" CharacterCasing="Lower" Text="{Binding AddonConfig.ModFolderName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock x:Name="AddonModNameErrorText" Visibility="Visible" Opacity="{Binding ShowFolderNameWarning, Converter={StaticResource BoolToFloatConverter}}" Text="Invalid name! Must contain only letters, numbers and underscore characters." Foreground="{DynamicResource SystemFillColorCriticalBrush}" FontSize="12" Margin="4,4,4,8" />
+
+                            <local:AlyxLibInstallOption x:Name="InstallOptionScriptBase"
+                                                        CheckboxContent="VScript Base"
+                                                        DescriptionText="All AlyxLib vscript related files, including 'gameinit', 'mod init' and '.vscode' settings files." 
+                                                        Margin="0,0,0,16"
+                                                        IsChecked="{Binding AddonConfig.VScriptInstalled, Mode=TwoWay, Converter={StaticResource BoolToBoolNullableConverter}}"
+                                                        />
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                    <Rectangle Width="2" Height="15" Fill="{DynamicResource ControlStrongStrokeColorDefaultBrush}" VerticalAlignment="Bottom" Margin="10,0,0,15" />
+                                    <Rectangle Width="15" Height="2" Fill="{DynamicResource ControlStrongStrokeColorDefaultBrush}" VerticalAlignment="Bottom" Margin="0,0,0,15" />
+                                <!--<TextBlock Text="Script Editor:" VerticalAlignment="Center" Margin="20,0,10,0"/>-->
+                                <Label Content="Script Editor:" VerticalAlignment="Center" Margin="20,0,10,0" Target="{Binding ElementName=ScriptEditorSettingsOption}"/>
+                                <ComboBox x:Name="ScriptEditorSettingsOption"
+                                          DisplayMemberPath="Item1"
+                                          SelectedValuePath="Item2" MinWidth="110"
+                                          ItemsSource="{Binding ScriptEditorOptions}"
+                                          SelectedValue="{Binding AddonConfig.EditorType, Mode=TwoWay}"
+                                          />
+                            </StackPanel>
+
+                            <local:AlyxLibInstallOption x:Name="InstallOptionSoundEvent"
+                                                        CheckboxContent="SoundEvent / Manifest"
+                                                        DescriptionText="Creates '.vsndevts' and '.vrman' files for your addon using the addon folder name."
+                                                        Margin="0,0,0,16"
+                                                        IsChecked="{Binding AddonConfig.SoundEventInstalled, Mode=TwoWay, Converter={StaticResource BoolToBoolNullableConverter}}"
+                                                        />
+                            <local:AlyxLibInstallOption x:Name="InstallOptionPanorama"
+                                                        CheckboxContent="Panorama"
+                                                        DescriptionText="Adds AlyxLib Panorama files to your addon."
+                                                        Margin="0,0,0,16"
+                                                        IsChecked="{Binding AddonConfig.PanoramaInstalled, Mode=TwoWay, Converter={StaticResource BoolToBoolNullableConverter}}"
+                                                        />
+                            <local:AlyxLibInstallOption x:Name="InstallOptionGit"
+                                                        CheckboxContent="Git"
+                                                        DescriptionText="Initializes a Git repository in your addon content folder."
+                                                        Margin="0,0,0,16"
+                                                        IsChecked="{Binding AddonConfig.GitInstalled, Mode=TwoWay, Converter={StaticResource BoolToBoolNullableConverter}}"
+                                                        />
+                        
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Buttons -->
+
+                        <Grid Grid.Column="0" Grid.Row="1"
+                              HorizontalAlignment="Center"
+                              Margin="16,0,16,16"
+                              IsEnabled="{Binding IsInstallationReady}"
+                              >
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+
+                            <Button Grid.Column="0" Grid.Row="0"
+                                    x:Name="InstallButton"
+                                    Content="Install"
+                                    Margin="16,8,16,8"
+                                    Command="{Binding InstallAlyxLibCommand}"
+                                    Style="{DynamicResource AccentButtonStyle}"
+                                    />
+                        <!--<Button x:Name="UninstallButton" Content="Remove For Upload" Click="UninstallButton_Click" Margin="16"/>-->
+
+                            <Grid Grid.Column="1" Grid.Row="0" Height="32">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition />
+                                    <!-- Main button -->
+                                    <ColumnDefinition Width="*"/>
+                                    <!-- Split area -->
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Main button -->
+                                <Button Grid.Column="0" Grid.Row="0"
+                                        Padding="12,4"
+                                        x:Name="RemoveForUploadButton"
+                                        Content="Remove For Upload"
+                                        Command="{Binding RemoveAlyxLibFromAddonForUploadCommand}"
+                                        />
+
+                                <!-- Arrow button -->
+                                <Button Grid.Row="0" Grid.Column="1"
+                                        VerticalAlignment="Stretch"
+                                        Click="UninstallSplitButton_Click"
+                                        ContextMenu="{StaticResource UninstallContextMenu}"
+                                        Background="{Binding Background, ElementName=RemoveForUploadButton}"
+                                        BorderBrush="{Binding BorderBrush, ElementName=RemoveForUploadButton}"
+                                        BorderThickness="{Binding BorderThickness, ElementName=RemoveForUploadButton}"
+                                        Padding="0" Width="32" Height="{Binding ActualHeight, ElementName=RemoveForUploadButton}"
+                                        >
+
+                                    <!-- Chevron -->
+                                    <Path Data="M 0,0 L 5,5 L 10,0"
+                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2"
+                                          Width="10" Height="6"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          />
+                                    
+                                </Button>
+                                
+                                <Border Grid.Column="1"
+                                        Width="2"
+                                        HorizontalAlignment="Left"
+                                        Background="{DynamicResource ControlStrongStrokeColorDefaultBrush}"
+                                        Margin="0,2"
+                                        CornerRadius="2,0,0,2"
+                                        />
+                            </Grid>
+
+
+
+                            <TextBlock Grid.Row="1" Grid.Column="1" Foreground="{DynamicResource SystemFillColorCautionBrush}" FontSize="10" Visibility="{Binding FileRemovalCount, Converter={StaticResource CountToVisibilityConverter}}">
+                                <Hyperlink Foreground="{DynamicResource SystemFillColorCautionBrush}" Command="{Binding ShowFileRemovalFilesCommand}">
+                                    ⓘ
+                                    <Run Text="{Binding FileRemovalCount, Mode=OneWay}" />
+                                    additional files will be removed
+                                </Hyperlink>
+                            </TextBlock>
+                        </Grid>
+
+                        <!-- Right panel (Debug Console) -->
+                        <Grid Grid.Column="1" Grid.RowSpan="3"
+                              Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                              Margin="16"
+                              >
+                            <RichTextBox x:Name="DebugConsole"
+                                         IsDocumentEnabled="True"
+                                         IsReadOnly="True"
+                                         FontFamily="Consolas"
+                                         Padding="10"
+                                         Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+                                         VerticalScrollBarVisibility="Auto"
+                                         />
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Loading Overlay -->
+        <Grid x:Name="LoadingOverlay" Background="#80000000" Visibility="{Binding IsCurrentlyLoading, Converter={StaticResource BoolToVisibilityConverter}}">
+            <ProgressBar x:Name="DownloadProgressRing" IsIndeterminate="True" Width="200" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <TextBlock x:Name="DownloadProgressText" Text="{Binding LoadingOverlayText}" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="0,100,0,0"/>
+        </Grid>
+    </Grid>
+</Window>
