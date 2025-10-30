@@ -18,7 +18,8 @@ public partial class AlyxLibManager
     [MemberNotNullWhen(true, nameof(AlyxLibPath))]
     public bool AlyxLibExists
     {
-        get => AlyxLibPath != null && AlyxLibPath.Exists;
+        //NOTE: AlyxLibPath.Exists does not update
+        get => AlyxLibPath != null && Directory.Exists(AlyxLibPath.FullName);
     }
 
     public string AlyxLibVersion { get; private set; } = "0.0.0";

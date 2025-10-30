@@ -20,6 +20,8 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 {
     private readonly IDialogService _dialogService;
     private readonly ILogger? _logger;
+    private FolderDeletionMonitor? _alyxLibMonitor;
+    private FolderDeletionMonitor? _addonMonitor;
     private void Log(string message, LogType type = LogType.Basic, LogSeverity severity = LogSeverity.Normal) => _logger?.Log(message, type, severity);
     private void LogException(Exception ex, bool quiet = false)
     {
@@ -225,7 +227,12 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 
     public void SelectAddon(string name)
     {
-        var addon = HLA.GetAddon(name);
+        if (!HLA.TryGetAddon(name, out LocalAddon addon))
+        {
+            _logger?.LogError($"Failed to find addon {name}");
+            return;
+        }
+        
         if (addon == null) return;
 
         SelectAddon(addon);
@@ -253,6 +260,21 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             _addon.IsSelected = (_addon.LocalAddon == addon);
 
         if (addon == SelectedAddon) return;
+
+        _addonMonitor?.Dispose();
+        _addonMonitor = new FolderDeletionMonitor(addon.ContentPath,
+            onDeleted: () =>
+            {
+                OnPropertyChanged(nameof(IsAddonSelected));
+                OnPropertyChanged(nameof(IsInstallationReady));
+                _logger?.LogWarning($"Addon {addon.Name} was deleted.");
+            },
+            onCreated: () =>
+             {
+                 OnPropertyChanged(nameof(IsAddonSelected));
+                 OnPropertyChanged(nameof(IsInstallationReady));
+                 _logger?.LogInfo($"Addon {addon.Name} was restored.");
+             });
 
         SelectedAddon = addon;
 
@@ -441,7 +463,10 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 
         if (Settings.RememberLastAddon)
         {
-            SelectAddon(HLA.GetAddon(Settings.LastAddon));
+            if (HLA.TryGetAddon(Settings.LastAddon, out LocalAddon addon))
+                SelectAddon(HLA.GetAddon(Settings.LastAddon));
+            else
+                _logger?.LogWarning($"Could not find addon '{Settings.LastAddon}'");
         }
     }
 
@@ -457,12 +482,13 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             ? AddonConfig.ModFolderName
             : SelectedAddon?.Name ?? string.Empty;
 
-    public bool IsAddonSelected => SelectedAddon != null;
+    public bool IsAddonSelected => SelectedAddon != null && Directory.Exists(SelectedAddon.ContentPath);
 
     public bool AlyxLibExists => AlyxLibInstance.AlyxLibExists;
 
     public bool IsInstallationReady =>
         AlyxLibInstance.AlyxLibExists
+        && IsAddonSelected
         && SelectedAddon != null
         && AddonConfig != null
         && !IsFolderNameInvalid;
@@ -782,10 +808,18 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
     {
         if (!AlyxLibHelpers.CheckPathIsAlyxLib(path)) return false;
 
+        _alyxLibMonitor?.Dispose();
+
         AlyxLibInstance.SetAlyxLibPath(path);
         Settings.AlyxLibDirectory = path;
         OnPropertyChanged(nameof(IsInstallationReady));
         OnPropertyChanged(nameof(AlyxLibExists));
+
+        _alyxLibMonitor = FolderDeletionMonitor.Either(path, () =>
+        {
+            OnPropertyChanged(nameof(IsInstallationReady));
+            OnPropertyChanged(nameof(AlyxLibExists));
+        });
 
         return true;
     }
