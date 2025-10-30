@@ -1,3 +1,4 @@
+using AlyxLib;
 using LibGit2Sharp;
 using Microsoft.UI;
 using Microsoft.UI.Xaml;
@@ -18,8 +19,6 @@ using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.System;
 using Windows.UI;
-using AlyxLib;
-
 using static AlyxLibInstaller.App;
 
 // To learn more about WinUI, the WinUI project structure,
@@ -520,7 +519,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
         AddonModNameTextBox.Text = "";
         //InstallOptionVSCodeSettings.IsChecked = false;
         InstallOptionScriptBase.IsChecked = false;
-        InstallOptionSoundEvent.IsChecked= false;
+        InstallOptionSoundEvent.IsChecked = false;
         InstallOptionPanorama.IsChecked = false;
         InstallOptionGit.IsChecked = false;
 
@@ -887,7 +886,7 @@ public sealed partial class MainWindow : WinUIEx.WindowEx
     private void MenuBarOpenGitHub_Click(object sender, RoutedEventArgs e)
     {
         Process.Start(new ProcessStartInfo() { FileName = "https://github.com/FrostSource/alyxlib", UseShellExecute = true });
-    
+
     }
 
     private void MenuBarDownloadAlyxLib_Click(object sender, RoutedEventArgs e)

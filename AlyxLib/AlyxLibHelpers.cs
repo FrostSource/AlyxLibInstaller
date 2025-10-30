@@ -1,14 +1,8 @@
-﻿using AlyxLib.Logging;
+﻿using AlyxLib.Extensions;
+using AlyxLib.Logging;
 using Source2HelperLibrary;
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.IO.Compression;
-using System.Linq;
-using System.Net.Http;
 using System.Text.Json;
-using System.Threading.Tasks;
-using AlyxLib.Extensions;
 
 namespace AlyxLib;
 

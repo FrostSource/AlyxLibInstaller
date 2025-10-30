@@ -3,11 +3,6 @@ using AlyxLibInstallerShared.Models;
 using AlyxLibInstallerShared.Services.Dialog;
 using AlyxLibInstallerWPF.ViewModels;
 using Source2HelperLibrary;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -129,7 +124,7 @@ public class WpfDialogService : WpfFolderPickerService, IDialogService
             SecondaryButtonText = "Select AlyxLib Folder",
             CancelButtonText = "Cancel"
         });
-        
+
         return new DialogResponse(result);
 
 

@@ -1,15 +1,6 @@
-﻿using FileDeployment;
-using FileDeployment.Operations;
+﻿using FileDeployment.Operations;
 using FileDeploymentTests;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Runtime.Versioning;
-using System.Security.Principal;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FileDeployment.Tests;
 
@@ -199,22 +190,22 @@ public class DeploymentManifestTests
     }
     ";
 
-// These 2 rules were removed because ReplaceExistingFiles is false for AlyxLib so they won't be overwritten
-//""rules"": [
-//    {
-//    ""type"": ""FileDoesNotExist"",
-//    ""target"": ""destination"",
-//    ""description"": ""Addon soundevents file already exists, so it will not be replaced""
-//    }
-//]
+    // These 2 rules were removed because ReplaceExistingFiles is false for AlyxLib so they won't be overwritten
+    //""rules"": [
+    //    {
+    //    ""type"": ""FileDoesNotExist"",
+    //    ""target"": ""destination"",
+    //    ""description"": ""Addon soundevents file already exists, so it will not be replaced""
+    //    }
+    //]
 
-//""rules"": [
-//    {
-//    ""type"": ""FileDoesNotExist"",
-//    ""target"": ""destination"",
-//    ""description"": ""Addon resource manifest file already exists, so it will not be replaced"",
-//    }
-//]
+    //""rules"": [
+    //    {
+    //    ""type"": ""FileDoesNotExist"",
+    //    ""target"": ""destination"",
+    //    ""description"": ""Addon resource manifest file already exists, so it will not be replaced"",
+    //    }
+    //]
 
     //private const string SampleJson = @"
     //{
@@ -320,13 +311,13 @@ public class DeploymentManifestTests
     [TestMethod()]
     public void ApplyDefaultChecksTest()
     {
-        
+
     }
 
     [TestMethod()]
     public void LoadFromStringTest()
     {
-        
+
     }
 
     [SupportedOSPlatform("windows")]

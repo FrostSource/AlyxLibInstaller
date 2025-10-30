@@ -1,8 +1,7 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization;
-
-using FileDeployment.Converters;
+﻿using FileDeployment.Converters;
 using FileDeployment.Logging;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace FileDeployment
 {
@@ -70,7 +69,7 @@ namespace FileDeployment
                 switch (operation.Execute())
                 {
                     case FileOperationExecutionResult.Success: success++; break;
-                    case FileOperationExecutionResult.Failed:  fail++; break;
+                    case FileOperationExecutionResult.Failed: fail++; break;
                     case FileOperationExecutionResult.Skipped: break;
                 }
             }
@@ -124,7 +123,7 @@ namespace FileDeployment
         {
             if (!Categories.ContainsKey(category))
                 throw new KeyNotFoundException($"Category '{category}' not found in manifest");
-            
+
             int success = 0, fail = 0;
             List<FileOperation> operations = Categories[category];
             foreach (FileOperation operation in operations)
@@ -185,7 +184,7 @@ namespace FileDeployment
                     Log(LogEntry.Info(operation, "Operation is not marked for removal in deployment manifest, skipping..."));
                 }
             }
-            
+
             return new DeploymentResult(success, fail);
         }
 
@@ -271,7 +270,7 @@ namespace FileDeployment
         {
             if (!File.Exists(path))
                 throw new FileNotFoundException("Manifest file not found", path);
-            
+
             return LoadFromString(File.ReadAllText(path));
         }
     }

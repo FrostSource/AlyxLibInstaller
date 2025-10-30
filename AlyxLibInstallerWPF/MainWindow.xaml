@@ -9,11 +9,9 @@
         Width="1024" Height="560" Title="{Binding WindowTitle}" MinHeight="300" MinWidth="350"
         x:Name="Root"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-mc:Ignorable="d"
-
-
-    d:DataContext="{d:DesignInstance Type=vm:AlyxLibInstallerSharedViewModel, IsDesignTimeCreatable=False}"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:AlyxLibInstallerSharedViewModel, IsDesignTimeCreatable=False}"
         >
     <Window.Resources>
         <!-- Converters -->
@@ -123,7 +121,6 @@ mc:Ignorable="d"
                     <Separator/>
                     <MenuItem Header="Check For Updates" Command="{Binding CheckForUpdatesCommand}" />
                     <MenuItem Header="About" Command="{Binding ShowAboutPopupCommand}"/>
-                    <MenuItem Header="Log thing" Click="MenuItem_Click"/>
                 </MenuItem>
             </Menu>
 

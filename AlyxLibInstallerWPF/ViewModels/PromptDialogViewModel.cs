@@ -1,10 +1,5 @@
 ﻿using AlyxLibInstallerShared.Services.Dialog;
 using CommunityToolkit.Mvvm.ComponentModel;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AlyxLibInstallerWPF.ViewModels;
 public partial class PromptDialogViewModel : ObservableObject
@@ -13,7 +8,7 @@ public partial class PromptDialogViewModel : ObservableObject
 
     [ObservableProperty]
     public partial string? Message { get; set; }
-    
+
     [ObservableProperty]
     public partial bool HasCheckBox { get; set; } = false;
     [ObservableProperty]

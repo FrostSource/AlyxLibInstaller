@@ -8,7 +8,7 @@ namespace FileDeployment.Rules
         {
             if (File.Exists(path))
                 return $"File '{path}' exists.";
-            
+
             if (Directory.Exists(path))
                 return $"Directory '{path}' exists.";
 

@@ -1,0 +1,8 @@
+{
+  "min_size": 2048000,
+  "max_size": 71254000,
+  "files": [
+    {"name": "myapp-sc.exe", "size": 71254000},
+    {"name": "myapp-fd.exe", "size": 2048000}
+  ]
+}

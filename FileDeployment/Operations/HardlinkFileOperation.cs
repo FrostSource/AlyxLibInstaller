@@ -1,6 +1,5 @@
 ﻿using FileDeployment.Exceptions;
 using FileDeployment.Logging;
-using System.Text.Json.Serialization;
 
 namespace FileDeployment.Operations
 {
@@ -10,32 +9,32 @@ namespace FileDeployment.Operations
         public VariableString Destination { get; set; } = new();
 
         //public override OperationType Type => OperationType.Symlink;
-        
+
         public override void ExecuteWithoutRules()
         {
 
-                if (ReplaceExistingSymlinks && FileUtils.IsSymbolicLink(Destination))
-                {
-                    FileUtils.DeletePath(Destination);
-                }
+            if (ReplaceExistingSymlinks && FileUtils.IsSymbolicLink(Destination))
+            {
+                FileUtils.DeletePath(Destination);
+            }
 
-                // Ensure the parent directory of the destination exists
-                FileUtils.CreateParentDirectories(Destination);
+            // Ensure the parent directory of the destination exists
+            FileUtils.CreateParentDirectories(Destination);
 
-                if (Directory.Exists(Source))
-                {
-                    throw new FileOperationException($"Source '{Source}' is a directory, a hardlink must be a file.", this, Source);
-                }
-                else if (File.Exists(Source))
-                {
-                    FileUtils.CreateHardLinkFile(Source, Destination);
-                }
-                else
-                {
-                    throw new FileOperationException($"Source '{Source}' does not exist.", this, Source);
-                }
+            if (Directory.Exists(Source))
+            {
+                throw new FileOperationException($"Source '{Source}' is a directory, a hardlink must be a file.", this, Source);
+            }
+            else if (File.Exists(Source))
+            {
+                FileUtils.CreateHardLinkFile(Source, Destination);
+            }
+            else
+            {
+                throw new FileOperationException($"Source '{Source}' does not exist.", this, Source);
+            }
 
-                Log(LogEntry.Success(this, $"Created symlink successfully"));
+            Log(LogEntry.Success(this, $"Created symlink successfully"));
             //}
             //catch (Exception ex)
             //{

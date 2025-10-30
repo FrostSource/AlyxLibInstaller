@@ -1,6 +1,4 @@
-﻿using FileDeployment.Exceptions;
-using FileDeployment.Logging;
-using System.Text.Json.Serialization;
+﻿using FileDeployment.Logging;
 
 namespace FileDeployment.Operations
 {
@@ -29,7 +27,7 @@ namespace FileDeployment.Operations
             // Source and Destination are VariableString, so they should be automatically formatted here
             //Console.WriteLine($"Copying {Source} to {Destination}");
             File.Copy(Source, Destination, true);
-                //sourceStream.CopyTo(destinationStream);
+            //sourceStream.CopyTo(destinationStream);
             Log(LogEntry.Success(this, $"Copied file {Source} to {Destination} successfully"));
 
             //}

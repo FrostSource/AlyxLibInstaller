@@ -1,8 +1,6 @@
 ﻿#nullable enable
 
 using Source2HelperLibrary;
-using System;
-using System.IO;
 
 namespace AlyxLib;
 

@@ -1,18 +1,10 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using FileDeployment;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FileDeployment.Tests;
+﻿namespace FileDeployment.Tests;
 
 [TestClass()]
 public class FileUtilsTests
 {
     private const string TestFile01Hash = "16c83711817810b1de5517e0dd0d1f584e51353c336f847510cc5dbfe32154c3";
-    
+
     [TestMethod()]
     [DeploymentItem(@"TestData\FileHash01.txt")]
     public void GetFileHashTest()

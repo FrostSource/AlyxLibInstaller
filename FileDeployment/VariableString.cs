@@ -33,7 +33,7 @@ namespace FileDeployment
         //}
 
         public static implicit operator VariableString(string value) => new(value);
-        public static implicit operator string(VariableString vs) => vs.ToString()?? "";
+        public static implicit operator string(VariableString vs) => vs.ToString() ?? "";
 
         public string Format()
         {

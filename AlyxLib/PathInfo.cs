@@ -1,7 +1,5 @@
 ﻿#nullable enable
 
-using System.IO;
-
 namespace AlyxLib;
 
 public class PathInfo
@@ -34,7 +32,7 @@ public class PathInfo
     public bool IsDirectory { get; private set; }
 
     public string? LinkTarget => Info.LinkTarget;
-    
+
     public static string operator /(PathInfo left, string right)
     {
         return Path.Combine(left.FullName, right);
@@ -44,5 +42,5 @@ public class PathInfo
         return Path.Combine(left.FullName, right.FullName);
     }
 
-    public override string ToString() {  return Info.ToString(); }
+    public override string ToString() { return Info.ToString(); }
 }

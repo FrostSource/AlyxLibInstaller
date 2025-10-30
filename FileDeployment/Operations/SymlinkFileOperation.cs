@@ -1,6 +1,5 @@
 ﻿using FileDeployment.Exceptions;
 using FileDeployment.Logging;
-using System.Text.Json.Serialization;
 
 namespace FileDeployment.Operations
 {
@@ -10,7 +9,7 @@ namespace FileDeployment.Operations
         public VariableString Destination { get; set; } = new();
 
         //public override OperationType Type => OperationType.Symlink;
-        
+
         public override void ExecuteWithoutRules()
         {
             //if (Source == null)
@@ -20,46 +19,46 @@ namespace FileDeployment.Operations
 
             //try
             //{
-                // TODO: Implement symlink creation taking into account folder/file
-                //Console.WriteLine($"Symlinking {Source} to {Destination}");
-                
-                //if (File.Exists(Destination) || Directory.Exists(Destination))
-                //{
-                //    if (ReplaceExistingFiles || (ReplaceExistingSymlinks && FileUtils.IsSymbolicLink(Destination)))
-                //    {
-                //        FileUtils.DeletePath(Destination);
-                //    }
-                //    else
-                //    {
-                //        //throw new FileAlreadyExistsException(this, $"Destination '{Destination}' already exists and will not be replaced.");
-                //        //Log(new(this, $"Destination '{Destination}' already exists and will not be replaced.", ));
-                //        Log(new(this, new Logging.FileWillNotBeReplaced() { Target=RuleTarget.Destination }));
-                //        return; // Skip operation if we don't replace existing files or symlinks
-                //    }
-                //}
+            // TODO: Implement symlink creation taking into account folder/file
+            //Console.WriteLine($"Symlinking {Source} to {Destination}");
 
-                if (ReplaceExistingSymlinks && FileUtils.IsSymbolicLink(Destination))
-                {
-                    FileUtils.DeletePath(Destination);
-                }
+            //if (File.Exists(Destination) || Directory.Exists(Destination))
+            //{
+            //    if (ReplaceExistingFiles || (ReplaceExistingSymlinks && FileUtils.IsSymbolicLink(Destination)))
+            //    {
+            //        FileUtils.DeletePath(Destination);
+            //    }
+            //    else
+            //    {
+            //        //throw new FileAlreadyExistsException(this, $"Destination '{Destination}' already exists and will not be replaced.");
+            //        //Log(new(this, $"Destination '{Destination}' already exists and will not be replaced.", ));
+            //        Log(new(this, new Logging.FileWillNotBeReplaced() { Target=RuleTarget.Destination }));
+            //        return; // Skip operation if we don't replace existing files or symlinks
+            //    }
+            //}
 
-                // Ensure the parent directory of the destination exists
-                FileUtils.CreateParentDirectories(Destination);
+            if (ReplaceExistingSymlinks && FileUtils.IsSymbolicLink(Destination))
+            {
+                FileUtils.DeletePath(Destination);
+            }
 
-                if (Directory.Exists(Source))
-                {
-                    Directory.CreateSymbolicLink(Destination, Source);
-                }
-                else if (File.Exists(Source))
-                {
-                    File.CreateSymbolicLink(Destination, Source);
-                }
-                else
-                {
-                    throw new FileOperationException($"Source '{Source}' does not exist.", this, Source);
-                }
+            // Ensure the parent directory of the destination exists
+            FileUtils.CreateParentDirectories(Destination);
 
-                Log(LogEntry.Success(this, $"Created symlink successfully"));
+            if (Directory.Exists(Source))
+            {
+                Directory.CreateSymbolicLink(Destination, Source);
+            }
+            else if (File.Exists(Source))
+            {
+                File.CreateSymbolicLink(Destination, Source);
+            }
+            else
+            {
+                throw new FileOperationException($"Source '{Source}' does not exist.", this, Source);
+            }
+
+            Log(LogEntry.Success(this, $"Created symlink successfully"));
             //}
             //catch (Exception ex)
             //{

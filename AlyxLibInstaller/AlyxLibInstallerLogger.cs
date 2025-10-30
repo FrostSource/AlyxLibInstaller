@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using AlyxLib.Logging;
+﻿using AlyxLib.Logging;
 
 namespace AlyxLibInstaller;
 internal class AlyxLibInstallerLogger : ILogger

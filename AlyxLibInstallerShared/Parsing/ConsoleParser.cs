@@ -1,11 +1,6 @@
 ﻿using AlyxLib.Logging;
 using AlyxLibInstallerShared.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace AlyxLibInstallerShared.Parsing;
 public static class ConsoleParser

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FileDeployment.Logging;
+﻿namespace FileDeployment.Logging;
 
 /// <summary>
 /// Used for logging purposes when <see cref="DeploymentManifest.ReplaceExistingFiles"/> is false and a file operation is attempted that would replace an existing file.

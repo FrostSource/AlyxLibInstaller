@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace AlyxLibInstallerShared.Services.Dialog;
+﻿namespace AlyxLibInstallerShared.Services.Dialog;
 public record DialogConfiguration
 {
     public string? Title { get; init; }
@@ -13,7 +7,7 @@ public record DialogConfiguration
     public string? PrimaryButtonText { get; init; }
     public string? SecondaryButtonText { get; init; }
     public string? CancelButtonText { get; init; } = "OK";
-    
+
     public bool HasCheckBox { get; init; } = false;
     public string? CheckBoxText { get; init; } = "Dont show this again";
     public bool CheckBoxDefaultChecked { get; init; } = false;

@@ -9,20 +9,9 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using Semver;
 using Source2HelperLibrary;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
-using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-using static System.Net.Mime.MediaTypeNames;
 
 ///TODO: Move individual responsibilities to new services, e.g. DownloadAlyxLibService, AddonManagementService
 
@@ -316,7 +305,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
         }
 
         SelectAddon(new SelectableLocalAddon(new LocalAddon(name), false));
-        
+
     }
 
     private static string GetUniqueAddonFolderName(string rootPath, string baseName)
@@ -343,6 +332,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
     [RelayCommand]
     private async Task NewAddon()
     {
+        string defaultAvailableAddonName = GetUniqueAddonFolderName(HLA.GetAddonContentFolder(), "my_alyxlib_addon");
         DialogResponse result = await _dialogService.ShowTextPopup(new()
         {
             Title = "Creating New Addon",
@@ -350,7 +340,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             PrimaryButtonText = "Create",
             CancelButtonText = "Cancel",
             HasTextBox = true,
-            TextBoxPlaceholderText = GetUniqueAddonFolderName(HLA.GetAddonContentFolder(), "my_alyxlib_addon"),
+            TextBoxPlaceholderText = defaultAvailableAddonName,
             TextBoxValidator = IsValidAddonFolderName,
             TextBoxInvalidMessage = "Invalid addon name. Use only lowercase letters, numbers, or underscores, and make sure the name isn’t already taken.",
             Width = 250
@@ -362,9 +352,9 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             return;
         }
 
-        if (result != null)
+        if (result.InputText != null)
         {
-            var addonName = result.InputText;
+            var addonName = string.IsNullOrWhiteSpace(result.InputText) ? defaultAvailableAddonName : result.InputText;
 
             if (string.IsNullOrEmpty(addonName) || !AlyxLibHelpers.StringIsValidModName(addonName))
             {
@@ -645,7 +635,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             if (result.RemoteIsNewer)
             {
                 _logger?.LogInfo($"Update available: {result.LocalVersion} -> {result.RemoteVersion}");
-                
+
                 var response = await _dialogService.ShowTextPopup(new()
                 {
                     Title = "Update Available",
@@ -763,7 +753,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
     public bool TrySetAlyxLibPath(string path)
     {
         if (!AlyxLibHelpers.CheckPathIsAlyxLib(path)) return false;
-        
+
         AlyxLibInstance.SetAlyxLibPath(path);
         Settings.AlyxLibDirectory = path;
         OnPropertyChanged(nameof(IsInstallationReady));
@@ -960,7 +950,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 
     [RelayCommand]
     private void DownloadAlyxLib() => DownloadAlyxLib(true);
-    
+
     private async void DownloadAlyxLib(bool newLocation = false)
     {
         string downloadPath;

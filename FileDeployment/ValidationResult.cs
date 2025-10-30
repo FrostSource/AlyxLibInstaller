@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FileDeployment;
+﻿namespace FileDeployment;
 
 /// <summary>
 /// Represents the result of a <see cref="ValidationRule"/> evaluation.
@@ -24,7 +18,7 @@ public class ValidationResult
     public static ValidationResult Fail(string? message = null) => new(false, message);
 
     public static implicit operator ValidationResult(bool success) => new(success);
-    public static implicit operator ValidationResult((bool success, string? message) result) 
+    public static implicit operator ValidationResult((bool success, string? message) result)
         => new(result.success, result.message);
     public static implicit operator ValidationResult(string message) => new(false, message);
 }

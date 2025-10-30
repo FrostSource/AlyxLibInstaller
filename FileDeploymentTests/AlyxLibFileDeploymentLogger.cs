@@ -1,14 +1,6 @@
 ﻿using FileDeployment.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using FileDeployment.Rules;
 using FileDeployment.Operations;
-using FileDeployment.Exceptions;
-using FileDeployment;
+using FileDeployment.Rules;
 
 namespace FileDeploymentTests;
 

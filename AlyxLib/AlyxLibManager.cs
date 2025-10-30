@@ -1,7 +1,7 @@
 ﻿#nullable enable
 
-using System.Diagnostics.CodeAnalysis;
 using AlyxLib.Logging;
+using System.Diagnostics.CodeAnalysis;
 
 namespace AlyxLib;
 

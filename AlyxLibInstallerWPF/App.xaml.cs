@@ -1,14 +1,11 @@
-﻿using System;
-using System.Windows;
-using System.Windows.Media;
-using AlyxLib.Logging;
-using AlyxLibInstallerShared;
+﻿using AlyxLib.Logging;
 using AlyxLibInstallerShared.Models;
 using AlyxLibInstallerShared.Services.Dialog;
 using AlyxLibInstallerShared.ViewModels;
-using AlyxLibInstallerWPF.Services.Interfaces;
 using AlyxLibInstallerWPF.Extensions;
+using AlyxLibInstallerWPF.Services.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
+using System.Windows;
 
 namespace AlyxLibInstallerWPF;
 
@@ -59,7 +56,7 @@ public partial class App : Application
         services.AddScoped<IDialogService>(sp => new WpfDialogService(main));
         //services.AddSingleton<IFolderPickerService, WpfFolderPickerService>();
         services.AddScoped<ILogger>(sp => new AlyxLibInstallerLogger(main));
-        
+
         Services = services.BuildServiceProvider();
 
         base.OnStartup(e);

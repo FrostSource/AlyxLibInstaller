@@ -138,7 +138,7 @@ public class FileManager
 
         templatePath = Path.Combine("templates", templatePath);
         var fullTemplatePath = Path.Combine(manager.AlyxLibPath.FullName, templatePath);
-        
+
         if (File.Exists(fullTemplatePath))
         {
             template = File.ReadAllText(fullTemplatePath);
@@ -498,7 +498,7 @@ public class FileManager
         //    }
         //}
 
-        
+
         //undeploy(options.VScriptInstalled, [
         //    "vscript",
         //    options.EditorType switch
@@ -509,7 +509,7 @@ public class FileManager
 
         //undeploy(options.PanoramaInstalled, ["panorama"]);
         //undeploy(options.SoundEventInstalled, ["sounds"]);
-        
+
         //if (!options.GitInstalled)
         //{
         //    string gitFolder = Path.Combine(addon.ContentPath, ".git");

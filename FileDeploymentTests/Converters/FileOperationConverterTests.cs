@@ -1,10 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using FileDeployment.Converters;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
 using System.Text.Json;
 
 namespace FileDeployment.Converters.Tests;
@@ -76,7 +70,7 @@ public class FileOperationConverterTests
         {
             string json;
 
-            
+
             // Create a valid JSON string with the type
             if (typeof(IFileOperationWithDestination).IsAssignableFrom(FileOperationFactory.GetTypeFromName(typeName)))
             {

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FileDeployment.Logging;
+﻿namespace FileDeployment.Logging;
 
 /// <summary>
 /// Provides a basic logging implementation that writes log entries to the console.

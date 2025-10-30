@@ -1,9 +1,6 @@
-﻿using System;
-using System.Text.Json;
-using System.IO;
-using AlyxLibInstallerShared.Models;
+﻿using AlyxLibInstallerShared.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
-using System.Collections.ObjectModel;
+using System.Text.Json;
 
 namespace AlyxLibInstallerShared;
 
@@ -130,7 +127,7 @@ public sealed class SettingsManager
             {
                 var jsonString = File.ReadAllText(Path);
                 var settings = JsonSerializer.Deserialize(jsonString, SettingsJsonContext.Default.Settings);
-            
+
                 if (settings != null) return settings;
             }
         }

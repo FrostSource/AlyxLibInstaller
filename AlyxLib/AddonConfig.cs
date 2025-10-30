@@ -1,4 +1,6 @@
-﻿namespace AlyxLib;
+﻿using System.Text.Json.Serialization;
+
+namespace AlyxLib;
 
 public class AddonConfig
 {
@@ -8,6 +10,7 @@ public class AddonConfig
     public bool GitInstalled { get; set; }
     public string ModFolderName { get; set; } = string.Empty;
     public string Version { get; set; } = "0.0.0";
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public ScriptEditor EditorType { get; set; } = ScriptEditor.None;
     public List<string> FileRemovalGlobs { get; set; } = [];
 
@@ -32,5 +35,6 @@ public class AddonConfig
         return true;
     }
 
+    [JsonIgnore]
     public bool IsFolderNameValid => AlyxLibHelpers.StringIsValidModName(ModFolderName);
 }

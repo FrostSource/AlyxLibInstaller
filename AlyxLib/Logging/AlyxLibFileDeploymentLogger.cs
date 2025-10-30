@@ -1,13 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FileDeployment;
-using FileDeployment.Logging;
+﻿using FileDeployment.Logging;
 using Source2HelperLibrary;
-using System.IO;
-using AlyxLib.Logging;
 
 namespace AlyxLib.Logging;
 public class AlyxLibFileDeploymentLogger(LocalAddon addon, ILogger? alyxlibLogger, bool verbose = false) : FileDeployment.Logging.IFileDeploymentLogger

@@ -81,7 +81,7 @@ internal static class DialogHelper
         // Set options for your folder picker
         openPicker.SuggestedStartLocation = PickerLocationId.ComputerFolder;
 
-        foreach ( var filter in filters ) openPicker.FileTypeFilter.Add(filter);
+        foreach (var filter in filters) openPicker.FileTypeFilter.Add(filter);
 
         // Open the picker for the user to pick a folder
         return await openPicker.PickSingleFolderAsync();

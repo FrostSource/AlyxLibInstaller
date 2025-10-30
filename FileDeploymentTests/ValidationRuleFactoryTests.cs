@@ -1,12 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using FileDeployment;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FileDeployment.Tests;
+﻿namespace FileDeployment.Tests;
 
 [TestClass()]
 public class ValidationRuleFactoryTests

@@ -1,7 +1,6 @@
-﻿using FileDeployment.Exceptions;
-using FileDeployment.Converters;
-using System.Text.Json.Serialization;
+﻿using FileDeployment.Converters;
 using FileDeployment.Logging;
+using System.Text.Json.Serialization;
 
 namespace FileDeployment.Operations
 {
@@ -24,7 +23,7 @@ namespace FileDeployment.Operations
             {
                 template = template.Replace($"{{{i}}}", Replacements[i].ToString());
             }
-            
+
             return template;
         }
 
@@ -44,19 +43,19 @@ namespace FileDeployment.Operations
 
             //try
             //{
-                //Console.WriteLine($"Templating {Source} to {Destination} with replacements: {string.Join(", ", Replacements)}");
+            //Console.WriteLine($"Templating {Source} to {Destination} with replacements: {string.Join(", ", Replacements)}");
 
-                //EnsurePathWritable(Destination);
+            //EnsurePathWritable(Destination);
 
-                // Here you would typically read the source file, apply replacements, and write to destination
-                var template = GetTemplatedString();
+            // Here you would typically read the source file, apply replacements, and write to destination
+            var template = GetTemplatedString();
 
             // Ensure the parent directory of the destination exists
             FileUtils.CreateParentDirectories(Destination);
 
-                File.WriteAllText(Destination, template);
+            File.WriteAllText(Destination, template);
 
-                Log(LogEntry.Success(this, $"Templated file {Source} to {Destination} successfully"));
+            Log(LogEntry.Success(this, $"Templated file {Source} to {Destination} successfully"));
             //}
             //catch (Exception ex)
             //{

@@ -1,6 +1,5 @@
-﻿using System.Text.Json.Serialization;
-using FileDeployment.Converters;
-using FileDeployment.Logging;
+﻿using FileDeployment.Converters;
+using System.Text.Json.Serialization;
 
 namespace FileDeployment
 {
