@@ -9,4 +9,8 @@ public sealed class VersionComparisonResult(int comparison, SemVersion localVers
     public bool SameVersion => Comparison == 0;
     public SemVersion LocalVersion { get; init; } = localVersion;
     public SemVersion RemoteVersion { get; init; } = remoteVersion;
+    public bool RemoteConnectionFailed { get; init; } = false;
+
+    public static VersionComparisonResult Empty => new(0, new SemVersion(0, 0, 0), new SemVersion(0, 0, 0));
+    public static VersionComparisonResult Failed => new(0, new SemVersion(0, 0, 0), new SemVersion(0, 0, 0)) { RemoteConnectionFailed = true };
 }

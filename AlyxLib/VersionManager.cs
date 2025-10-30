@@ -1,4 +1,5 @@
-﻿using AlyxLib.Logging;
+﻿using AlyxLib.Exceptions;
+using AlyxLib.Logging;
 using Semver;
 using System.Text.Json;
 
@@ -29,11 +30,19 @@ namespace AlyxLib
 
             var localVersion = SemVersion.Parse(localVersionString);
 
-            var remoteVersion = SemVersion.Parse(await GetRemoteVersion(githubVersionUrl));
+            try
+            {
+                var remoteVersion = SemVersion.Parse(await GetRemoteVersion(githubVersionUrl));
 
-            var comparison = SemVersion.ComparePrecedence(remoteVersion, localVersion);
+                var comparison = SemVersion.ComparePrecedence(remoteVersion, localVersion);
 
-            return new VersionComparisonResult(comparison, localVersion, remoteVersion);
+                return new VersionComparisonResult(comparison, localVersion, remoteVersion);
+            }
+            catch (Exception ex) when (ex is RemoteConnectionException || ex is HttpRequestException)
+            {
+                Logger?.LogError(ex.Message);
+                return VersionComparisonResult.Failed;
+            }
         }
 
         /// <summary>
@@ -48,7 +57,7 @@ namespace AlyxLib
             //App.DebugConsoleMessage(GitHubVersionFileUrl);
 
             if (!response.IsSuccessStatusCode)
-                throw new Exception($"Failed to get version file from GitHub: {response.StatusCode}");
+                throw new RemoteConnectionException($"Failed to get version file from GitHub (Status Code: {response.StatusCode})");
 
             var remoteVersionContent = await response.Content.ReadAsStringAsync();
             VersionInfo? remoteJson = JsonSerializer.Deserialize(remoteVersionContent, VersionInfoJsonContext.Default.VersionInfo);

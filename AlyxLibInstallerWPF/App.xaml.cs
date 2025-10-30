@@ -1,4 +1,5 @@
 ﻿using AlyxLib.Logging;
+using AlyxLibInstallerShared;
 using AlyxLibInstallerShared.Models;
 using AlyxLibInstallerShared.Services.Dialog;
 using AlyxLibInstallerShared.ViewModels;
@@ -22,26 +23,26 @@ public partial class App : Application
     {
 
         //// Ensure log file is created at app startup and mark session start
-        //FileLogger.LogSessionStart();
+        FileLogger.LogSessionStart();
 
         //// WPF global exception handling
-        //this.DispatcherUnhandledException += (sender, e) =>
-        //{
-        //    FileLogger.Log(e.Exception);
-        //    if (MainWindow is MainWindow mainWindow)
-        //        mainWindow.DebugConsoleError($"Unhandled Exception: {e.Exception.Message}\nSee log for details: {FileLogger.LogFilePath}");
-        //    e.Handled = true;
-        //};
+        this.DispatcherUnhandledException += (sender, e) =>
+        {
+            FileLogger.Log(e.Exception);
+            if (MainWindow is MainWindow mainWindow)
+                mainWindow.DebugConsoleError($"Unhandled Exception: {e.Exception.Message}\nSee log for details: {FileLogger.LogFilePath}");
+            e.Handled = true;
+        };
 
-        //AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
-        //{
-        //    if (e.ExceptionObject is Exception ex)
-        //    {
-        //        FileLogger.Log(ex);
-        //        if (MainWindow is MainWindow mainWindow)
-        //            mainWindow.DebugConsoleError($"Unhandled Exception: {ex.Message}\nSee log for details: {FileLogger.LogFilePath}");
-        //    }
-        //};
+        AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+        {
+            if (e.ExceptionObject is Exception ex)
+            {
+                FileLogger.Log(ex);
+                if (MainWindow is MainWindow mainWindow)
+                    mainWindow.DebugConsoleError($"Unhandled Exception: {ex.Message}\nSee log for details: {FileLogger.LogFilePath}");
+            }
+        };
     }
 
     protected override void OnStartup(StartupEventArgs e)

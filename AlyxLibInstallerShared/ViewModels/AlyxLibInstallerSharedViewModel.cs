@@ -21,9 +21,11 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
     private readonly IDialogService _dialogService;
     private readonly ILogger? _logger;
     private void Log(string message, LogType type = LogType.Basic, LogSeverity severity = LogSeverity.Normal) => _logger?.Log(message, type, severity);
-    private void LogException(Exception ex)
+    private void LogException(Exception ex, bool quiet = false)
     {
-        _logger?.LogError($"{ex.GetType().Name} exception occurred! Check log for details {FileLogger.LogFilePath}");
+        if (!quiet)
+            _logger?.LogError($"{ex.GetType().Name} exception occurred! Check log for details {FileLogger.LogFilePath}");
+
         FileLogger.Log(ex);
     }
 
@@ -593,6 +595,13 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             if (!Settings.GetDontShowAgain("StartupUpdate"))
             {
                 var result = await GetAlyxLibVersionComparison();
+
+                if (result.RemoteConnectionFailed)
+                {
+                    _logger?.LogWarning("Unable to check for updates. Please check your internet connection.", LogSeverity.Low);
+                    goto SkipUpdateCheck;
+                }
+
                 if (result.RemoteIsNewer)
                 {
                     //_dialogService.ShowWarningPopup($"New version available!\nv{result.LocalVersion} -> v{result.RemoteVersion}\nUse Help -> Check for Updates to download.");
@@ -620,6 +629,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
                     }
                 }
             }
+        SkipUpdateCheck:;
         }
 
         IsInitializing = false;
@@ -635,6 +645,17 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             SetLoading(true, "Checking for updates");
 
             var result = await GetAlyxLibVersionComparison();
+
+            if (result.RemoteConnectionFailed)
+            {
+                _logger?.LogWarning("Unable to check for updates. Please check your internet connection.", LogSeverity.Low);
+                await _dialogService.ShowWarningPopup(new DialogConfiguration()
+                {
+                    Title = "Connection Failed",
+                    Message = "Unable to check for updates. Please check your internet connection."
+                });
+                return;
+            }
 
             _logger?.LogDetail($"Version diff: {result.Comparison}");
 
@@ -698,7 +719,8 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 
         if (AlyxLibInstance.AlyxLibPath == null || !Directory.Exists(AlyxLibInstance.AlyxLibPath.FullName))
         {
-            _logger?.LogError("AlyxLib path does not exists for some reason!");
+            _logger?.LogError("AlyxLib path does not exist. Please set AlyxLib path.");
+            _dialogService.ShowWarningPopup("AlyxLib path does not exist. Please set AlyxLib path.");
             return;
         }
 
@@ -976,19 +998,35 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             {
                 downloadPath = Path.Combine(downloadPath, "alyxlib");
             }
-            Directory.CreateDirectory(downloadPath);
         }
         else
         {
             downloadPath = AlyxLibInstance.AlyxLibPath.FullName;
         }
 
-        IsCurrentlyLoading = true;
+        SetLoading(true, "Downloading AlyxLib...");
 
         _logger?.LogDetail("Downloading AlyxLib...");
-        await AlyxLibHelpers.DownloadRepository(Settings.GitHubUrl, downloadPath);
 
-        IsCurrentlyLoading = false;
+        try
+        {
+            await AlyxLibHelpers.DownloadRepository(Settings.GitHubUrl, downloadPath);
+        }
+        catch (HttpRequestException ex)
+        {
+            //_logger?.LogError($"Failed to download AlyxLib. Please check your internet connection.");
+            LogException(ex, true);
+            await _dialogService.ShowWarningPopup(new DialogConfiguration()
+            {
+                Title = "Connection Failed",
+                Message = "Unable to download AlyxLib. Please check your internet connection."
+            });
+            return;
+        }
+        finally
+        {
+            SetLoading(false);
+        }
 
         if (TrySetAlyxLibPath(downloadPath))
             _logger?.Log($"AlyxLib path set to '{downloadPath}'", LogType.Success);
@@ -1010,7 +1048,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
         catch (Exception ex)
         {
             LogException(ex);
-            return new VersionComparisonResult(0, new SemVersion(0), new SemVersion(0));
+            return VersionComparisonResult.Failed;
         }
     }
 }
