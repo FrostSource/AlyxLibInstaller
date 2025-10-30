@@ -2,33 +2,23 @@
 using System.Windows.Controls;
 using System.Windows.Input;
 
-namespace AlyxLibInstallerWPF;
+namespace AlyxLibInstallerWPF.Dialogs;
 /// <summary>
 /// Interaction logic for ContentDialogWpfNew.xaml
 /// </summary>
 public partial class ContentDialogWpfNew : UserControl
 {
     private TaskCompletionSource<ContentDialogResult>? _tcs;
-    public string? PrimaryButtonText { get; set; }
-    public string? SecondaryButtonText { get; set; }
-    public string? CloseButtonText { get; set; } = "Close";
 
     public event EventHandler? Closed;
 
     public ContentDialogWpfNew()
     {
         InitializeComponent();
-        DataContext = this;
 
         PrimaryButton.Click += (s, e) => Close(ContentDialogResult.Primary);
         SecondaryButton.Click += (s, e) => Close(ContentDialogResult.Secondary);
         CloseButton.Click += (s, e) => Close(ContentDialogResult.None);
-    }
-
-    public string Title
-    {
-        get => (string)GetValue(TitleProperty);
-        set => SetValue(TitleProperty, value);
     }
 
     public static readonly DependencyProperty TitleProperty =

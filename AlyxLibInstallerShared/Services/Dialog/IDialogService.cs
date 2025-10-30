@@ -4,13 +4,6 @@ using Source2HelperLibrary;
 namespace AlyxLibInstallerShared.Services.Dialog;
 public interface IDialogService : IFolderPickerService
 {
-    /// <summary>
-    /// Prompts the user for input.
-    /// </summary>
-    /// <param name="owner"></param>
-    /// <param name="config"></param>
-    /// <returns>The string input, or null if the user cancelled.</returns>
-    //string? PromptStringResult(DialogConfiguration config);
     Task<DialogResponse> ShowIntroAlyxLibPopup();
     Task<DialogResponse> ShowPrivilegeWarning();
     Task<DialogResponse> ShowTextPopup(DialogConfiguration config);

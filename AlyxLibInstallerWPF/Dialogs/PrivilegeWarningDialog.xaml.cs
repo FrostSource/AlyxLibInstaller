@@ -2,7 +2,7 @@
 using System.Windows;
 using System.Windows.Controls;
 
-namespace AlyxLibInstallerWPF;
+namespace AlyxLibInstallerWPF.Dialogs;
 /// <summary>
 /// Interaction logic for PrivilegeWarningDialog.xaml
 /// </summary>

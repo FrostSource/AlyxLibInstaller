@@ -47,4 +47,10 @@
     <ProjectReference Include="..\AlyxLib\AlyxLib.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="MainWindow.DebugConsole.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </None>
+  </ItemGroup>
+
 </Project>

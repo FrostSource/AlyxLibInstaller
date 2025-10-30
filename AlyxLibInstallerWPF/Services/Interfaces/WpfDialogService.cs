@@ -2,6 +2,7 @@
 using AlyxLibInstallerShared.Models;
 using AlyxLibInstallerShared.Services.Dialog;
 using AlyxLibInstallerWPF.ViewModels;
+using AlyxLibInstallerWPF.Dialogs;
 using Source2HelperLibrary;
 using System.Windows;
 using System.Windows.Controls;
@@ -14,19 +15,15 @@ public class WpfDialogService : WpfFolderPickerService, IDialogService
     public WpfDialogService() { }
     public WpfDialogService(Window owner) => _owner = owner;
 
-    public async Task<DialogResult> ShowCustomPopup<T>(T content, DialogConfiguration config) where T : UIElement
+    public async Task<DialogResult> ShowCustomPopup<T>(T content, DialogConfiguration config, Panel? panel = null) where T : UIElement
     {
         var dialog = new ContentDialogWpfNew
         {
-            //Title = config.Title ?? "",
             DialogContent = content,
-            //PrimaryButtonText = config.PrimaryButtonText,
-            //SecondaryButtonText = config.SecondaryButtonText,
-            //CloseButtonText = config.CancelButtonText
             DataContext = config
         };
 
-        var panel = _owner?.Content as Panel;
+        panel ??= _owner?.Content as Panel;
 
         if (panel == null)
             throw new InvalidOperationException("You must set the owner of the dialog to a panel");
@@ -35,13 +32,6 @@ public class WpfDialogService : WpfFolderPickerService, IDialogService
         {
             KeyboardNavigation.SetTabNavigation(mw.RootGrid, KeyboardNavigationMode.None);
         }
-
-        //dialog.Focusable = true;
-        //dialog.Focus();
-        //KeyboardNavigation.SetTabNavigation(dialog, KeyboardNavigationMode.None);
-        //KeyboardNavigation.SetControlTabNavigation(dialog, KeyboardNavigationMode.None);
-
-        //dialog.ShowAsync(panel);
 
         var result = await panel.Dispatcher.InvokeAsync(() => DialogQueue.ShowDialogAsync(dialog, panel));
 
@@ -54,11 +44,6 @@ public class WpfDialogService : WpfFolderPickerService, IDialogService
             _ => throw new NotImplementedException()
         };
     }
-
-    //public string? PromptStringResult(DialogConfiguration config)
-    //{
-    //    throw new NotImplementedException();
-    //}
 
     public async Task<DialogResponse> ShowTextPopup(DialogConfiguration config)
     {
@@ -146,13 +131,18 @@ public class WpfDialogService : WpfFolderPickerService, IDialogService
 
     public async Task<DialogResponse> ShowFileRemovalPopup(DialogConfiguration config, FileGlobCollection globCollection, LocalAddon addon)
     {
-        var result = await ShowCustomPopup(new UploadRemovalListView(globCollection, addon), config);
+        var result = await ShowCustomPopup(new UploadRemovalListView(globCollection, addon, this), config);
+        return new DialogResponse(result);
+    }
+
+    public async Task<DialogResponse> ShowListPopup(DialogConfiguration config, IEnumerable<string> list, Panel? panel = null)
+    {
+        var result = await ShowCustomPopup(new StringListView { StringList = list, Message = config.Message }, config, panel);
         return new DialogResponse(result);
     }
 
     public async Task<DialogResponse> ShowListPopup(DialogConfiguration config, IEnumerable<string> list)
     {
-        var result = await ShowCustomPopup(new StringListView { StringList = list, Message = config.Message }, config);
-        return new DialogResponse(result);
+        return await ShowListPopup(config, list, null);
     }
 }

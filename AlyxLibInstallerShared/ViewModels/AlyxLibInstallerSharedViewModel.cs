@@ -73,12 +73,17 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             return;
         }
 
+        await ShowFileListDialog(FileRemovalGlobCollection.GetMatchingFiles(SelectedAddon.GamePath));
+    }
+
+    public async Task ShowFileListDialog(IEnumerable<string> list)
+    {
         await _dialogService.ShowListPopup(new DialogConfiguration
         {
             Title = "File Removal List",
             Message = "These files will be removed from the 'game' directory of this addon when clicking 'Remove For Upload'",
             CancelButtonText = "Close",
-        }, FileRemovalGlobCollection.GetMatchingFiles(SelectedAddon.GamePath));
+        }, list);
     }
 
     public int FileRemovalCount => SelectedAddon == null ? 0 : FileRemovalGlobCollection.GetMatchingFileCount(SelectedAddon.GamePath);
@@ -599,6 +604,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
                         CancelButtonText = "Cancel",
 
                         HasCheckBox = true,
+                        CheckBoxDefaultChecked = Settings.GetDontShowAgain("StartupUpdate"),
                     });
 
                     if (response.CheckboxChecked == true)

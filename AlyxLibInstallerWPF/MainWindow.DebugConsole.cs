@@ -15,34 +15,11 @@ public partial class MainWindow : Window
         var run = new Run { Text = displayText };
         hyperlink.Inlines.Add(run);
 
-        hyperlink.Click += async (s, e) =>
+        hyperlink.Click += (s, e) =>
         {
             try
             {
-                if (isUrl)
-                {
-                    if (Uri.TryCreate(linkTarget, UriKind.Absolute, out Uri? uriResult))
-                    {
-                        await Launcher.LaunchUriAsync(uriResult);
-                    }
-                }
-                else if (Directory.Exists(linkTarget))
-                {
-                    await Launcher.LaunchFolderPathAsync(linkTarget);
-                }
-                else if (File.Exists(linkTarget))
-                {
-                    Process.Start("explorer.exe", $"/select,\"{linkTarget}\"");
-                }
-                else
-                {
-                    // Try to open the parent directory if the file doesn't exist
-                    string parentDir = Path.GetDirectoryName(linkTarget);
-                    if (!string.IsNullOrEmpty(parentDir) && Directory.Exists(parentDir))
-                    {
-                        await Launcher.LaunchFolderPathAsync(parentDir);
-                    }
-                }
+                Launcher.Launch(linkTarget);
             }
             catch (Exception)
             {

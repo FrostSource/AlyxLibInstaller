@@ -1,5 +1,4 @@
-﻿
-namespace AlyxLibInstallerWPF;
+﻿namespace AlyxLibInstallerWPF.Dialogs;
 
 public enum ContentDialogResult
 {

@@ -1,6 +1,6 @@
 ﻿using System.Windows.Controls;
 
-namespace AlyxLibInstallerWPF;
+namespace AlyxLibInstallerWPF.Dialogs;
 /// <summary>
 /// Interaction logic for ListView.xaml
 /// </summary>

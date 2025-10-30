@@ -1,7 +1,7 @@
 ﻿using System.Windows.Controls;
 using System.Windows.Navigation;
 
-namespace AlyxLibInstallerWPF;
+namespace AlyxLibInstallerWPF.Dialogs;
 /// <summary>
 /// Interaction logic for AboutView.xaml
 /// </summary>
