@@ -1,7 +1,6 @@
 ﻿using AlyxLibInstallerShared.Models;
 using AlyxLibInstallerShared.Services.Dialog;
 using Source2HelperLibrary;
-using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 

@@ -7,7 +7,6 @@ using AlyxLibInstallerShared.Services.Dialog;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
-using Semver;
 using Source2HelperLibrary;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -232,7 +231,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             _logger?.LogError($"Failed to find addon {name}");
             return;
         }
-        
+
         if (addon == null) return;
 
         SelectAddon(addon);

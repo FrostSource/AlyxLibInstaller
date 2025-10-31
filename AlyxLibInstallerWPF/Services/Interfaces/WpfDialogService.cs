@@ -1,8 +1,8 @@
 ﻿using AlyxLibInstallerShared;
 using AlyxLibInstallerShared.Models;
 using AlyxLibInstallerShared.Services.Dialog;
-using AlyxLibInstallerWPF.ViewModels;
 using AlyxLibInstallerWPF.Dialogs;
+using AlyxLibInstallerWPF.ViewModels;
 using Source2HelperLibrary;
 using System.Windows;
 using System.Windows.Controls;

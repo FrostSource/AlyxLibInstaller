@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace AlyxLibInstallerShared;
+﻿namespace AlyxLibInstallerShared;
 public class FolderDeletionMonitor : IDisposable
 {
     private readonly FileSystemWatcher _watcher;
@@ -45,7 +39,7 @@ public class FolderDeletionMonitor : IDisposable
 
         if (_onDeleted != null)
             _watcher.Deleted += OnFolderDeleted;
-        
+
         _watcher.Renamed += OnFolderRenamed;
 
         if (_onCreated != null)

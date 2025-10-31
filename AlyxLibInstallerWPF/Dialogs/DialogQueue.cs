@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using System.Windows.Controls;
+﻿using System.Windows.Controls;
 
 namespace AlyxLibInstallerWPF.Dialogs;
 public static class DialogQueue
