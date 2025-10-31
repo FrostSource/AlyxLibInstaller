@@ -3,6 +3,7 @@ name: Update Release Sizes
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
   generate-sizes:
