@@ -4,6 +4,11 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to process (leave empty for latest)'
+        required: false
+        type: string
 
 jobs:
   generate-sizes:
@@ -12,12 +17,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
       
+      - name: Determine release tag
+        id: get_tag
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          elif [ -n "${{ inputs.tag }}" ]; then
+            echo "tag=${{ inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            # Get the latest release tag
+            latest_tag=$(curl -sSL \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/latest" \
+              | jq -r '.tag_name')
+            echo "tag=$latest_tag" >> $GITHUB_OUTPUT
+          fi
+          echo "Using tag: $(cat $GITHUB_OUTPUT | grep tag | cut -d= -f2)"
+      
       - name: Generate sizes JSON
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ steps.get_tag.outputs.tag }}
           REPO: ${{ github.repository }}
         run: |
           mkdir -p docs
+          
+          echo "Fetching release data for tag: $RELEASE_TAG"
           
           # Fetch release data directly in this step
           curl -sSL \
@@ -35,11 +59,14 @@ jobs:
                   files: .
                 }' \
             > docs/sizes.json
+          
+          echo "Generated sizes.json:"
+          cat docs/sizes.json
       
       - name: Commit and push JSON
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add docs/sizes.json
-          git commit -m "Update sizes.json for ${{ github.event.release.tag_name }}" || echo "No changes to commit"
+          git commit -m "Update sizes.json for ${{ steps.get_tag.outputs.tag }}" || echo "No changes to commit"
           git push
