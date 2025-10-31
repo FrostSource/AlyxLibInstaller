@@ -1,0 +1,51 @@
+name: Update Release Sizes
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  generate-sizes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch latest release data
+        id: get_release
+        run: |
+          release_data=$(curl -sSL \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/latest")
+          echo "data=$release_data" >> $GITHUB_OUTPUT
+
+      - name: Generate sizes JSON
+        run: |
+          mkdir -p docs
+
+          # extract the tag (version) from the release
+          release_tag=$(echo '${{ steps.get_release.outputs.data }}' | jq -r '.tag_name')
+
+          # extract exe assets, compute min/max, and add version
+          echo '${{ steps.get_release.outputs.data }}' \
+          | jq --arg ver "$release_tag" '
+              [ .assets[]
+                | select(.name | endswith(".exe"))
+                | { name: .name, size: .size, url: .browser_download_url }
+              ]
+              | {
+                  version: $ver,
+                  min_size: (min_by(.size) | .size),
+                  max_size: (max_by(.size) | .size),
+                  files: .
+              }' \
+          > docs/sizes.json
+
+      - name: Commit and push JSON
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add docs/sizes.json
+          git commit -m "Update sizes.json for ${{ github.event.release.tag_name }}" || echo "No changes to commit"
+          git push
