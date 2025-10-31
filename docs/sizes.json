@@ -1,8 +1,17 @@
 {
-  "min_size": 2048000,
-  "max_size": 71254000,
+  "version": "v1.0.0",
+  "min_size": 2063488,
+  "max_size": 71429632,
   "files": [
-    {"name": "myapp-sc.exe", "size": 71254000},
-    {"name": "myapp-fd.exe", "size": 2048000}
+    {
+      "name": "AlyxLibInstaller-FD.exe",
+      "size": 2063488,
+      "url": "https://github.com/FrostSource/AlyxLibInstaller/releases/download/v1.0.0/AlyxLibInstaller-FD.exe"
+    },
+    {
+      "name": "AlyxLibInstaller-SC.exe",
+      "size": 71429632,
+      "url": "https://github.com/FrostSource/AlyxLibInstaller/releases/download/v1.0.0/AlyxLibInstaller-SC.exe"
+    }
   ]
 }
