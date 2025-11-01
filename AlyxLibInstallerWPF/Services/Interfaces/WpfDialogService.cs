@@ -47,14 +47,6 @@ public class WpfDialogService : WpfFolderPickerService, IDialogService
 
     public async Task<DialogResponse> ShowTextPopup(DialogConfiguration config)
     {
-        //return await ShowCustomPopup(new TextBlock { Text = config.Message }, new DialogConfiguration
-        //{
-        //    PrimaryButtonText = config.PrimaryButtonText,
-        //    SecondaryButtonText = config.SecondaryButtonText,
-        //    CancelButtonText = config.CancelButtonText,
-        //    Title = config.Title,
-        //});
-
         var vm = new PromptDialogViewModel(config);
 
         var dialog = new PromptDialog() { DataContext = vm };
@@ -63,12 +55,9 @@ public class WpfDialogService : WpfFolderPickerService, IDialogService
 
         return new DialogResponse(
             result,
-            config.HasCheckBox ? vm.IsCheckBoxChecked : null,
-            config.HasTextBox ? vm.TextBoxText : null
+            config.HasCheckBox ?? false ? vm.IsCheckBoxChecked : null,
+            config.HasTextBox ?? false ? vm.TextBoxText : null
             );
-
-        //return await ShowCustomPopup(new TextBlock { Text = config.Message }, config);
-        //return new DialogResponse(DialogResult.None);
     }
 
     public async Task<DialogResponse> ShowAboutPopup(DialogConfiguration config, AboutInfo info)
@@ -80,21 +69,22 @@ public class WpfDialogService : WpfFolderPickerService, IDialogService
         return new DialogResponse(result);
     }
 
+    private readonly DialogConfiguration warningConfig =
+        DialogConfiguration.Defaults with
+        {
+            Title = "Warning",
+            IconType = DialogIconType.Warning,
+            Width = 400
+        };
+
     public async Task<DialogResponse> ShowWarningPopup(DialogConfiguration config)
     {
-        ///TODO Replace with custom dialog
-        //System.Windows.MessageBox.Show(_owner, message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
-
-        //DialogHelper.ShowCustomPopupAsync(_owner, new SimpleTextDialog(message), title);
-        //var result = await ShowCustomPopup(new TextBlock { Text = message }, new DialogConfiguration { Title = title, CancelButtonText = "OK" });
-
-        var response = await ShowTextPopup(config);
+        var response = await ShowTextPopup(warningConfig.With(config));
         return response;
     }
 
     public async Task<DialogResponse> ShowPrivilegeWarning()
     {
-        //return await ShowCustomPopup(new PrivilegeWarningDialog(), new DialogConfiguration());
         var result = await ShowCustomPopup(new PrivilegeWarningDialog(), new DialogConfiguration { CancelButtonText = "OK" });
         return new DialogResponse(result);
     }
@@ -111,22 +101,6 @@ public class WpfDialogService : WpfFolderPickerService, IDialogService
         });
 
         return new DialogResponse(result);
-
-
-        //result = await DialogHelper.ShowCustomPopupAsync(this,
-        //    new SimpleTextDialog("Welcome to the AlyxLib installer! The AlyxLib files must exist on your computer so they can be linked to your addon, and it is recommended that you download to the same folder your addon exist in.\r\n\r\nWould you like to select a download location or select an already downloaded AlyxLib?"),
-        //    "Setup AlyxLib", "Download AlyxLib", "Select AlyxLib Folder", "Cancel");
-
-        //switch (result.Result)
-        //{
-        //    case ContentDialogResult.Primary:
-        //        DownloadAlyxLib();
-        //        break;
-
-        //    case ContentDialogResult.Secondary:
-        //        PromptUserToSelectAlyxLibFolder();
-        //        break;
-        //}
     }
 
     public async Task<DialogResponse> ShowFileRemovalPopup(DialogConfiguration config, FileGlobCollection globCollection, LocalAddon addon)

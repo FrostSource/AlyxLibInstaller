@@ -11,6 +11,6 @@ public interface IDialogService : IFolderPickerService
     Task<DialogResponse> ShowAboutPopup(DialogConfiguration config, AboutInfo info);
     Task<DialogResponse> ShowListPopup(DialogConfiguration config, IEnumerable<string> list);
     Task<DialogResponse> ShowWarningPopup(DialogConfiguration config);
-    Task<DialogResponse> ShowWarningPopup(string message) => ShowWarningPopup(new DialogConfiguration { Title = "Warning", Message = message, IconType = DialogIconType.Warning });
+    Task<DialogResponse> ShowWarningPopup(string message) => ShowWarningPopup(new DialogConfiguration { Message = message });
     Task<DialogResponse> ShowWarningPopup(string title, string message) => ShowWarningPopup(new DialogConfiguration { Title = title, Message = message, IconType = DialogIconType.Warning });
 }
