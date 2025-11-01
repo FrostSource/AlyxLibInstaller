@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.0-rc.1.25451.107" />
+    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.0-rc.2.25502.107" />
   </ItemGroup>
 
   <ItemGroup>
