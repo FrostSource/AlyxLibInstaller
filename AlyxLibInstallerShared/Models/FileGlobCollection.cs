@@ -45,12 +45,12 @@ public class FileGlobCollection : ObservableCollection<EditableEntry>
 
     public string[] GetMatchingFiles(string path)
     {
-        Matcher matcher = new(preserveFilterOrder: true);
+        Matcher matcher = new(StringComparison.OrdinalIgnoreCase, preserveFilterOrder: true);
 
         foreach (EditableEntry entry in this)
         {
-            if (entry.Name.StartsWith("!"))
-                matcher.AddExclude(entry.Name.Substring(1));
+            if (entry.Name.StartsWith('!'))
+                matcher.AddExclude(entry.Name[1..]);
             else
                 matcher.AddInclude(entry.Name);
         }
