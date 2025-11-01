@@ -132,25 +132,27 @@ public partial class MainWindow : Window
 
     public async void WriteToDebugConsole(string message, Color color)
     {
-        // Automatically log every debug console message to file
         FileLogger.Log(message);
 
-        var paragraph = CreateRichParagraph(message, color);
-
-        //if (DebugConsole.Document.Blocks.Count > -1)
-        //{
-        paragraph.Margin = new Thickness(0, 4, 0, 0);
-        //}
-
-        DebugConsole.Document.Blocks.Add(paragraph);
-
-        //TODO: Check if delay and dispatcher are needed in WPF
-        await Task.Delay(20);
-
-        Dispatcher.Invoke(() =>
+        if (Dispatcher.CheckAccess())
         {
+            Write(message, color);
+        }
+        else
+        {
+            await Dispatcher.InvokeAsync(() =>
+            {
+                Write(message, color);
+            });
+        }
+
+        void Write(string message, Color color)
+        {
+            Paragraph paragraph = CreateRichParagraph(message, color);
+            paragraph.Margin = new Thickness(0, 4, 0, 0);
+            DebugConsole.Document.Blocks.Add(paragraph);
             DebugConsole.ScrollToEnd();
-        });
+        }
     }
 
     private void Log(string message, string? verboseMessage, string colorResourceKey, bool verboseOnly = false)
