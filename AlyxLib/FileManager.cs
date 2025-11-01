@@ -1,4 +1,5 @@
 ﻿using AlyxLib.Logging;
+using AlyxLib.Services;
 using FileDeployment;
 using Source2HelperLibrary;
 using System.Text.Json;
@@ -358,6 +359,16 @@ public class FileManager
         }
         failedOperations += result.FailedOperations;
         successfulOperations += result.SuccessfulOperations;
+
+        // Delete user defined files
+        var globService = new FileGlobService(options.FileRemovalGlobs);
+        globService.OnFileDelete += (file) => Logger?.LogDetail($"Deleted {addon.GetGameFileRelativePath(file)}");
+        globService.OnFileDeleteException += (file, ex) =>
+        {
+            Logger?.LogError($"Failed to delete {addon.GetGameFileRelativePath(file)}: {ex.Message}");
+            failedOperations++;
+        };
+        globService.DeleteMatchingFiles(addon.GamePath);
 
         if (failedOperations > 0)
         {
