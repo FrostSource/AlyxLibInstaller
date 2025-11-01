@@ -875,6 +875,8 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             ModFolderName = DefaultModFolderName,
             EditorType = AddonConfig.EditorType,
 
+            FileRemovalGlobs = AddonConfig.FileRemovalGlobs,
+
             Version = AlyxLibInstance.AlyxLibVersion
         });
 
