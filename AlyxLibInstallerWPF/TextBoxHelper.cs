@@ -37,34 +37,34 @@ public class TextBoxHelper
 
     private static void OnPlaceholderChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is TextBox textBox)
+        if (d is not TextBox textBox) return;
+
+        void ApplyAdorner()
         {
-            //textBox.Loaded += (s, _) =>
-            //{
-            //    var layer = AdornerLayer.GetAdornerLayer(textBox);
-            //    if (layer != null)
-            //    {
-            //        layer.Add(new PlaceholderAdorner(textBox, e.NewValue?.ToString() ?? string.Empty));
-            //    }
-            //};
-            void ApplyAdorner()
+            var layer = AdornerLayer.GetAdornerLayer(textBox);
+            if (layer == null) return;
+
+            // Check for existing PlaceholderAdorner
+            var existing = layer.GetAdorners(textBox)?
+                                .OfType<PlaceholderAdorner>()
+                                .FirstOrDefault();
+            if (existing != null)
             {
-                var layer = AdornerLayer.GetAdornerLayer(textBox);
-                if (layer != null)
-                {
-                    layer.Add(new PlaceholderAdorner(textBox, e.NewValue?.ToString() ?? string.Empty));
-                }
+                existing.PlaceholderText = e.NewValue?.ToString() ?? string.Empty;
+                return;
             }
 
-            if (textBox.IsLoaded)
-            {
-                ApplyAdorner();
-            }
-            else
-            {
-                textBox.Loaded += (s, _) => ApplyAdorner();
-            }
+            // Add a new adorner if none exists
+            layer.Add(new PlaceholderAdorner(textBox, e.NewValue?.ToString() ?? string.Empty));
+        }
 
+        if (textBox.IsLoaded)
+        {
+            ApplyAdorner();
+        }
+        else
+        {
+            textBox.Loaded += (s, _) => ApplyAdorner();
         }
     }
 

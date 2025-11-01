@@ -8,6 +8,12 @@ public class PlaceholderAdorner : Adorner
 {
     private readonly TextBlock _placeholder;
 
+    public string PlaceholderText
+    {
+        get => _placeholder.Text;
+        set => _placeholder.Text = value;
+    }
+
     public PlaceholderAdorner(UIElement adornedElement, string placeholderText)
         : base(adornedElement)
     {
@@ -22,7 +28,18 @@ public class PlaceholderAdorner : Adorner
         };
         AddVisualChild(_placeholder);
 
-        (adornedElement as TextBox)!.TextChanged += (s, e) => InvalidateVisual();
+        //(adornedElement as TextBox)!.TextChanged += (s, e) => InvalidateVisual();
+
+        if (adornedElement is TextBox tb)
+            tb.TextChanged += (s, e) => UpdateVisibility();
+
+        UpdateVisibility();
+    }
+
+    private void UpdateVisibility()
+    {
+        if (AdornedElement is TextBox tb)
+            _placeholder.Visibility = string.IsNullOrEmpty(tb.Text) ? Visibility.Visible : Visibility.Collapsed;
     }
 
     protected override int VisualChildrenCount => 1;
@@ -53,13 +70,13 @@ public class PlaceholderAdorner : Adorner
 
     }
 
-    protected override void OnRender(DrawingContext drawingContext)
-    {
-        var textBox = (TextBox)AdornedElement;
-        _placeholder.Visibility = string.IsNullOrEmpty(textBox.Text)
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-    }
+    //protected override void OnRender(DrawingContext drawingContext)
+    //{
+    //    var textBox = (TextBox)AdornedElement;
+    //    _placeholder.Visibility = string.IsNullOrEmpty(textBox.Text)
+    //        ? Visibility.Visible
+    //        : Visibility.Collapsed;
+    //}
 
     //Style="{StaticResource PlaceholderTextBox}"
 
