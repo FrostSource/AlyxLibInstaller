@@ -21,6 +21,8 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
     private readonly ILogger? _logger;
     private FolderDeletionMonitor? _alyxLibMonitor;
     private FolderDeletionMonitor? _addonMonitor;
+    private FileSystemWatcher? _addonGameFolderMonitor;
+    private FileSystemWatcher? _addonsFolderMonitor;
     private void Log(string message, LogType type = LogType.Basic, LogSeverity severity = LogSeverity.Normal) => _logger?.Log(message, type, severity);
     private void LogException(Exception ex, bool quiet = false)
     {
@@ -58,6 +60,8 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             var diskConfig = AlyxLibHelpers.GetAddonConfig(SelectedAddon);
             diskConfig.FileRemovalGlobs = [.. FileRemovalGlobCollection.Select(x => x.Name)];
             AlyxLibInstance.FileManager.SaveAddonConfig(SelectedAddon, diskConfig);
+            // Update globs in memory
+            AddonConfig.FileRemovalGlobs = [.. FileRemovalGlobCollection.Select(x => x.Name)];
 
             _logger?.LogDetail("File removal list updated");
         }
@@ -250,7 +254,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
         FileRemovalGlobCollection = new FileGlobCollection(AddonConfig.FileRemovalGlobs);
     }
 
-    public void SelectAddon(LocalAddon addon)
+    public async void SelectAddon(LocalAddon addon)
     {
         if (addon == null) return;
 
@@ -274,6 +278,19 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
                  OnPropertyChanged(nameof(IsInstallationReady));
                  _logger?.LogInfo($"Addon {addon.Name} was restored.");
              });
+
+        // Hopefully watching the game folder isn't a big overhead
+        _addonGameFolderMonitor?.Dispose();
+        _addonGameFolderMonitor = new FileSystemWatcher(addon.GamePath)
+        {
+            EnableRaisingEvents = true,
+            IncludeSubdirectories = true,
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName
+        };
+        // Automatically update the file removal count
+        _addonGameFolderMonitor.Created += (_, _) => OnPropertyChanged(nameof(FileRemovalCount));
+        _addonGameFolderMonitor.Deleted += (_, _) => OnPropertyChanged(nameof(FileRemovalCount));
+        _addonGameFolderMonitor.Renamed += (_, _) => OnPropertyChanged(nameof(FileRemovalCount));
 
         SelectedAddon = addon;
 
@@ -305,10 +322,18 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 
         if (!SelectedAddonConfigFound && addonHasAlyxLib)
         {
-            _dialogService.ShowWarningPopup(
-                "Missing AlyxLib config file",
-                $"It looks like {SelectedAddon.Name} has a version of AlyxLib that wasn't installed using this installer or the config file was deleted. Some options may appear incorrectly. It is recommended to backup your project before installing in case any custom AlyxLib files are modified."
-                );
+            if (!Settings.GetDontShowAgain("MissingAlyxLibConfig"))
+            {
+                DialogResponse response = await _dialogService.ShowWarningPopup(new DialogConfiguration
+                {
+                    Title = "Missing AlyxLib config file",
+                    Message = $"It looks like {SelectedAddon.Name} has a version of AlyxLib that wasn't installed using this installer or the config file was deleted. Some options may appear incorrectly.\n\nIt is recommended to backup your project before installing in case any custom AlyxLib files are modified.",
+                    CheckBoxDefaultChecked = Settings.GetDontShowAgain("MissingAlyxLibConfig"),
+                    HasCheckBox = true
+                });
+
+                Settings.SetDontShowAgain("MissingAlyxLibConfig", response.CheckboxChecked == true);
+            }
         }
         WeakReferenceMessenger.Default.Send(new AddonChangedMessage(payload));
         //Messenger.Send(new AddonChangedMessage(payload)); //TODO Make sure this works
@@ -449,14 +474,14 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 
     void InitializeAddons()
     {
-        var contentFolderWatcher = new FileSystemWatcher(HLA.GetAddonContentFolder())
+        _addonsFolderMonitor = new FileSystemWatcher(HLA.GetAddonContentFolder())
         {
             NotifyFilter = NotifyFilters.DirectoryName,
             EnableRaisingEvents = true
         };
 
-        contentFolderWatcher.Created += (_, _) => RefreshAddons();
-        contentFolderWatcher.Deleted += (_, _) => RefreshAddons();
+        _addonsFolderMonitor.Created += (_, _) => RefreshAddons();
+        _addonsFolderMonitor.Deleted += (_, _) => RefreshAddons();
 
         RefreshAddons();
 
@@ -640,11 +665,8 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
                         HasCheckBox = true,
                         CheckBoxDefaultChecked = Settings.GetDontShowAgain("StartupUpdate"),
                     });
-
-                    if (response.CheckboxChecked == true)
-                    {
-                        Settings.SetDontShowAgain("StartupUpdate", true);
-                    }
+                    
+                    Settings.SetDontShowAgain("StartupUpdate", response.CheckboxChecked == true);
 
                     switch (response.Result)
                     {
