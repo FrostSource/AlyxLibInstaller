@@ -47,16 +47,16 @@ public partial class PromptDialogViewModel : ObservableObject
     public PromptDialogViewModel(DialogConfiguration config)
     {
         Message = config.Message;
-        HasCheckBox = config.HasCheckBox;
+        HasCheckBox = config.HasCheckBox ?? false;
         CheckBoxText = config.CheckBoxText;
-        HasTextBox = config.HasTextBox;
+        HasTextBox = config.HasTextBox ?? false;
         TextBoxPlaceholderText = config.TextBoxPlaceholderText;
         TextBoxDefaultText = config.TextBoxDefaultText;
         TextBoxValidator = config.TextBoxValidator;
-        TextBoxInvalidMessage = config.TextBoxInvalidMessage;
+        TextBoxInvalidMessage = config.TextBoxInvalidMessage ?? "";
         DialogWidth = config.Width;
 
         TextBoxText = TextBoxDefaultText ?? "";
-        IsCheckBoxChecked = config.CheckBoxDefaultChecked;
+        IsCheckBoxChecked = config.CheckBoxDefaultChecked ?? false;
     }
 }
