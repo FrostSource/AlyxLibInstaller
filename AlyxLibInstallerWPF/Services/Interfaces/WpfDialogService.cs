@@ -109,12 +109,14 @@ public class WpfDialogService : WpfFolderPickerService, IDialogService
 
     public async Task<DialogResponse> ShowFileRemovalPopup(DialogConfiguration config, FileGlobCollection globCollection, LocalAddon addon)
     {
+        config = DialogConfiguration.Defaults.With(config);
         var result = await ShowCustomPopup(new UploadRemovalListView(globCollection, addon, this), config);
         return new DialogResponse(result);
     }
 
     public async Task<DialogResponse> ShowListPopup(DialogConfiguration config, IEnumerable<string> list, Panel? panel = null)
     {
+        config = DialogConfiguration.Defaults.With(config);
         var result = await ShowCustomPopup(new StringListView { StringList = list, Message = config.Message }, config, panel);
         return new DialogResponse(result);
     }
