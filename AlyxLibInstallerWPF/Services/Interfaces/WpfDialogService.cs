@@ -47,6 +47,8 @@ public class WpfDialogService : WpfFolderPickerService, IDialogService
 
     public async Task<DialogResponse> ShowTextPopup(DialogConfiguration config)
     {
+        config = DialogConfiguration.Defaults.With(config);
+
         var vm = new PromptDialogViewModel(config);
 
         var dialog = new PromptDialog() { DataContext = vm };
