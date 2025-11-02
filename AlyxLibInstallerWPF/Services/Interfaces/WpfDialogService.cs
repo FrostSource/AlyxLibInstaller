@@ -64,6 +64,8 @@ public class WpfDialogService : WpfFolderPickerService, IDialogService
 
     public async Task<DialogResponse> ShowAboutPopup(DialogConfiguration config, AboutInfo info)
     {
+        config = DialogConfiguration.Defaults.With(config);
+
         var dialog = new AboutView() { DataContext = info };
 
         var result = await ShowCustomPopup(dialog, config);
