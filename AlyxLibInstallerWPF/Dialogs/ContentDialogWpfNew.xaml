@@ -15,9 +15,13 @@
         <Thickness x:Key="DialogMargin">20</Thickness>
     </UserControl.Resources>
     
-    <Grid Background="#40000000">
+    <Grid x:Name="RootOverlay" Background="#40000000">
         <Border  Background="{DynamicResource SolidBackgroundFillColorTertiaryBrush}" CornerRadius="8" BorderBrush="{DynamicResource ControlStrokeColorSecondaryBrush}" BorderThickness="1"
-                HorizontalAlignment="Center" VerticalAlignment="Center">
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Margin="24"
+                MaxWidth="{Binding ActualWidth, ElementName=RootOverlay}"
+                MaxHeight="{Binding ActualHeight, ElementName=RootOverlay}">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="50" Color="Black" Opacity="0.1" ShadowDepth="0" />
             </Border.Effect>
@@ -47,7 +51,11 @@
                VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <ContentControl Margin="20,0,20,20" Grid.Row="1" Content="{Binding DialogContent, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                <ContentControl Margin="20,0,20,20"
+                                Grid.Row="1"
+                                HorizontalContentAlignment="Stretch"
+                                VerticalContentAlignment="Stretch"
+                                Content="{Binding DialogContent, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                 <Border Grid.Row="2"
                         Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
                         BorderBrush="{DynamicResource CardStrokeColorDefaultSolidBrush}"

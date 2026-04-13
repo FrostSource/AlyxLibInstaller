@@ -1,5 +1,6 @@
 ﻿using AlyxLib;
 using AlyxLib.Logging;
+using AlyxLib.Services;
 using AlyxLibInstallerShared.Messaging.Messages;
 using AlyxLibInstallerShared.Messaging.Payloads;
 using AlyxLibInstallerShared.Models;
@@ -36,6 +37,11 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
     [NotifyPropertyChangedFor(nameof(FileRemovalCount))]
     public partial FileGlobCollection FileRemovalGlobCollection { get; set; }
 
+    private static List<string> SerializeFileRemovalGlobs(IEnumerable<EditableEntry> entries) =>
+        [.. entries
+            .Where(entry => !string.IsNullOrWhiteSpace(entry.Name))
+            .Select(entry => entry.ToConfigString())];
+
     [RelayCommand]
     private async Task ShowFileRemovalEditor()
     {
@@ -53,18 +59,19 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             CancelButtonText = "Cancel",
         }, globClone, SelectedAddon);
 
-        if (response.Result == DialogResult.Primary)
-        {
-            FileRemovalGlobCollection = globClone;
-            // Also edit addon config on disk
-            var diskConfig = AlyxLibHelpers.GetAddonConfig(SelectedAddon);
-            diskConfig.FileRemovalGlobs = [.. FileRemovalGlobCollection.Select(x => x.Name)];
-            AlyxLibInstance.FileManager.SaveAddonConfig(SelectedAddon, diskConfig);
-            // Update globs in memory
-            AddonConfig.FileRemovalGlobs = [.. FileRemovalGlobCollection.Select(x => x.Name)];
+            if (response.Result == DialogResult.Primary)
+            {
+                FileRemovalGlobCollection = globClone;
+                var serializedGlobs = SerializeFileRemovalGlobs(FileRemovalGlobCollection);
+                // Also edit addon config on disk
+                var diskConfig = AlyxLibHelpers.GetAddonConfig(SelectedAddon);
+                diskConfig.FileRemovalGlobs = serializedGlobs;
+                AlyxLibInstance.FileManager.SaveAddonConfig(SelectedAddon, diskConfig);
+                // Update globs in memory
+                AddonConfig.FileRemovalGlobs = serializedGlobs;
 
-            _logger?.LogDetail("File removal list updated");
-        }
+                _logger?.LogDetail("File removal list updated");
+            }
         else
         {
             _logger?.LogDetail("File removal editor cancelled");
@@ -88,7 +95,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
         await _dialogService.ShowListPopup(new DialogConfiguration
         {
             Title = "File Removal List",
-            Message = "These files will be removed from the 'game' directory of this addon when clicking 'Remove For Upload'",
+            Message = "These files match your upload removal rules. The legend shows which files are deleted and which are restored on the next Install.",
             CancelButtonText = "Close",
         }, list);
     }
@@ -562,7 +569,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 
             //AddonConfig.FileRemovalGlobs = newGlobs;
 
-            AddonConfig.FileRemovalGlobs = [.. FileRemovalGlobCollection.Select(x => x.Name)];
+            AddonConfig.FileRemovalGlobs = SerializeFileRemovalGlobs(FileRemovalGlobCollection);
             OnPropertyChanged(nameof(FileRemovalCount));
         };
 

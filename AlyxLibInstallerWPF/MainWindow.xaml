@@ -290,8 +290,9 @@
                             <TextBlock Grid.Row="1" Grid.Column="1" Foreground="{DynamicResource SystemFillColorCautionBrush}" FontSize="10" Visibility="{Binding FileRemovalCount, Converter={StaticResource CountToVisibilityConverter}}">
                                 <Hyperlink Foreground="{DynamicResource SystemFillColorCautionBrush}" Command="{Binding ShowFileRemovalFilesCommand}">
                                     ⓘ
+                                    <Run Text="Matched files (" />
                                     <Run Text="{Binding FileRemovalCount, Mode=OneWay}" />
-                                    additional files will be removed
+                                    <Run Text=")" />
                                 </Hyperlink>
                             </TextBlock>
                         </Grid>

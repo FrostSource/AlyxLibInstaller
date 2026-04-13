@@ -10,6 +10,7 @@ namespace AlyxLib;
 public class FileManager
 {
     private readonly AlyxLibManager manager;
+    private const string UploadRemovalTemporaryFolderName = "upload_removal_temp";
 
     private const string DefaultSoundEventHash = "768e1cb207576e41b92718e0559f876095618a23f7a116a829a7b5d578591eeb";
     private const string DefaultResourceManifestHash = "495d7301afadbed3eece2d16250608b4e4c9529fd3d34a8f93fbf61479c6ab13";
@@ -34,6 +35,36 @@ public class FileManager
         ];
 
     public FileManager(AlyxLibManager manager) => this.manager = manager;
+
+    private static string GetUploadRemovalTemporaryStoragePath(LocalAddon addon) =>
+        Path.Combine(addon.ContentPath, ".alyxlib", UploadRemovalTemporaryFolderName);
+
+    private bool RestoreTemporarilyMovedUploadFiles(LocalAddon addon)
+    {
+        var temporaryStoragePath = GetUploadRemovalTemporaryStoragePath(addon);
+        if (!Directory.Exists(temporaryStoragePath))
+            return true;
+
+        bool restoreFailed = false;
+        var globService = new FileGlobService([]);
+
+        globService.OnFileRestore += file =>
+        {
+            Logger?.LogDetail($"Restored {addon.GetGameFileRelativePath(file)}");
+        };
+        globService.OnFileRestoreException += (file, ex) =>
+        {
+            Logger?.LogError($"Failed to restore {addon.GetGameFileRelativePath(file)}: {ex.Message}");
+            restoreFailed = true;
+        };
+
+        globService.RestoreTemporarilyMovedFiles(addon.GamePath, temporaryStoragePath);
+
+        if (!restoreFailed)
+            Logger?.LogDetail("Restored temporarily moved upload files");
+
+        return !restoreFailed;
+    }
 
     //TODO: These file checkers should really use FileDeployment
 
@@ -322,6 +353,8 @@ public class FileManager
 
 
         // Post-installation tasks
+        if (!RestoreTemporarilyMovedUploadFiles(addon))
+            failureOccurred = true;
 
         Logger?.LogDetail("Saving AlyxLib config...");
         SaveAddonConfig(addon, options);
@@ -360,15 +393,31 @@ public class FileManager
         failedOperations += result.FailedOperations;
         successfulOperations += result.SuccessfulOperations;
 
-        // Delete user defined files
+        // Delete or temporarily move user defined files
         var globService = new FileGlobService(options.FileRemovalGlobs);
-        globService.OnFileDelete += (file) => Logger?.LogDetail($"Deleted {addon.GetGameFileRelativePath(file)}");
+        var temporaryStoragePath = GetUploadRemovalTemporaryStoragePath(addon);
+
+        globService.OnFileDelete += (file) =>
+        {
+            Logger?.LogDetail($"Deleted {addon.GetGameFileRelativePath(file)}");
+            successfulOperations++;
+        };
         globService.OnFileDeleteException += (file, ex) =>
         {
             Logger?.LogError($"Failed to delete {addon.GetGameFileRelativePath(file)}: {ex.Message}");
             failedOperations++;
         };
-        globService.DeleteMatchingFiles(addon.GamePath);
+        globService.OnFileTemporaryMove += (file, _) =>
+        {
+            Logger?.LogDetail($"Temporarily moved {addon.GetGameFileRelativePath(file)}");
+            successfulOperations++;
+        };
+        globService.OnFileTemporaryMoveException += (file, ex) =>
+        {
+            Logger?.LogError($"Failed to temporarily move {addon.GetGameFileRelativePath(file)}: {ex.Message}");
+            failedOperations++;
+        };
+        globService.ApplyRemovals(addon.GamePath, temporaryStoragePath);
 
         if (failedOperations > 0)
         {
@@ -572,14 +621,17 @@ public class FileManager
         failedOperations += result.FailedOperations;
         successfulOperations += result.SuccessfulOperations;
 
-        Logger?.LogDetail("Removing addon config...");
-        RemoveAddonConfig(addon);
+        if (!RestoreTemporarilyMovedUploadFiles(addon))
+            failedOperations++;
 
         if (failedOperations > 0 || successfulOperations == 0)
         {
             Logger?.LogWarning($"Some files could not be removed.");
             return;
         }
+
+        Logger?.LogDetail("Removing addon config...");
+        RemoveAddonConfig(addon);
 
         Logger?.Log($"AlyxLib has been fully removed from {addon.Name}.", LogType.Success);
     }
@@ -615,14 +667,16 @@ public class FileManager
         var configFolder = Path.Combine(addon.ContentPath, ".alyxlib");
         var configPath = Path.Combine(configFolder, "config.json");
 
-        if (!File.Exists(configPath))
+        if (!Directory.Exists(configFolder))
         {
-            Logger?.LogError($"Failed to find config file: {configPath}");
+            Logger?.LogError($"Failed to find config folder: {configFolder}");
             return;
         }
 
-        File.Delete(configPath);
-        Directory.Delete(configFolder);
+        if (File.Exists(configPath))
+            File.Delete(configPath);
+
+        Directory.Delete(configFolder, recursive: true);
     }
 
     private static void WriteAllText(string path, string contents)

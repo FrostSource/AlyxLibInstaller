@@ -1,26 +1,287 @@
-﻿<UserControl x:Class="AlyxLibInstallerWPF.Dialogs.UploadRemovalListView"
+<UserControl x:Class="AlyxLibInstallerWPF.Dialogs.UploadRemovalListView"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:converters="clr-namespace:AlyxLibInstallerWPF.Converters"
       xmlns:local="clr-namespace:AlyxLibInstallerWPF" xmlns:viewmodels="clr-namespace:AlyxLibInstallerShared.Models;assembly=AlyxLibInstallerShared" d:DataContext="{d:DesignInstance Type=viewmodels:FileGlobCollection}"
       mc:Ignorable="d" 
-      Width="400" Height="300"
+      Width="400"
+      MinHeight="360"
       >
 
-    <StackPanel Orientation="Vertical">
-        <TextBlock TextWrapping="Wrap" Margin="0,0,0,16">
-            Files found in the 'game' directory of the addon using these glob patterns will be removed when the 'Remove For Upload' button is clicked.
-        </TextBlock>
-        <Grid Margin="0,0,0,16">
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <converters:InvertBoolToVisibilityConverter x:Key="InvertBoolToVisibilityConverter" />
+        <Geometry x:Key="DeleteIconGeometry">M 4,4 L 12,12 M 12,4 L 4,12</Geometry>
+        <Geometry x:Key="TemporaryIconGeometry">M 8,2 A 6,6 0 1 1 3.2,4.4 M 2.75,2.75 L 2.75,5.75 L 5.75,5.75</Geometry>
+        <Geometry x:Key="ExcludeIconGeometry">M 8,1.5 A 6.5,6.5 0 1 1 7.99,1.5 M 4.5,11.5 L 11.5,4.5</Geometry>
+        <Geometry x:Key="RemoveRuleIconGeometry">M 4,4 L 12,12 M 12,4 L 4,12</Geometry>
+
+        <Style x:Key="CompactIconButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorSecondaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultSolidBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Border" Property="Opacity" Value="0.92" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Border" Property="Opacity" Value="0.75" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ModeToggleStyle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="52" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <EventSetter Event="Loaded" Handler="ModeToggle_Loaded" />
+            <EventSetter Event="Checked" Handler="ModeToggle_Checked" />
+            <EventSetter Event="Unchecked" Handler="ModeToggle_Unchecked" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="12">
+                            <Grid Margin="3,0">
+                                <Border x:Name="Thumb"
+                                        Width="18"
+                                        Height="18"
+                                        CornerRadius="9"
+                                        Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{DynamicResource CardStrokeColorDefaultSolidBrush}"
+                                        BorderThickness="1"
+                                        HorizontalAlignment="Left"
+                                        VerticalAlignment="Center"
+                                        Margin="2,0,0,0"
+                                        RenderTransformOrigin="0.5,0.5">
+                                    <Grid>
+                                        <Path x:Name="ThumbDeleteIcon"
+                                              Data="{StaticResource DeleteIconGeometry}"
+                                              Width="8"
+                                              Height="8"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Stretch="Fill"
+                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}"
+                                              StrokeThickness="1.5"
+                                              StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round" />
+                                        <Path x:Name="ThumbTemporaryIcon"
+                                              Data="{StaticResource TemporaryIconGeometry}"
+                                              Width="8"
+                                              Height="8"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              Stretch="Fill"
+                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource TemplatedParent}}"
+                                              StrokeThickness="1.2"
+                                              StrokeStartLineCap="Round"
+                                              StrokeEndLineCap="Round"
+                                              StrokeLineJoin="Round"
+                                              Visibility="Collapsed">
+                                        </Path>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                <Setter TargetName="ThumbDeleteIcon" Property="Visibility" Value="Collapsed" />
+                                <Setter TargetName="ThumbTemporaryIcon" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Opacity" Value="0.97" />
+                                <Setter TargetName="Thumb" Property="Background" Value="{DynamicResource CardBackgroundFillColorSecondaryBrush}" />
+                                <Setter TargetName="Thumb" Property="BorderBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Border" Property="Opacity" Value="0.92" />
+                                <Setter TargetName="Thumb" Property="Opacity" Value="0.96" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Border" Property="Opacity" Value="0.75" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="LegendChipStyle" TargetType="Border">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="CornerRadius" Value="5" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultSolidBrush}" />
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorSecondaryBrush}" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Vertical" Margin="0,0,0,12">
+            <TextBlock Margin="0,0,0,10"
+               Text="Add rules to remove files from the game path during Remove For Upload."
+               Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+               FontWeight="SemiBold" />
+
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="28" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                Width="18"
+                Height="18"
+                CornerRadius="5"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultSolidBrush}"
+                Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                VerticalAlignment="Top"
+                Margin="0,1,8,0">
+                    <Viewbox Width="12" Height="12">
+                        <Path Data="{StaticResource DeleteIconGeometry}"
+                              Stroke="{DynamicResource SystemFillColorCriticalBrush}"
+                              StrokeThickness="1.8"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round">
+                            <Path.RenderTransform>
+                                <TranslateTransform X="-1" Y="-1" />
+                            </Path.RenderTransform>
+                        </Path>
+                    </Viewbox>
+                </Border>
+
+                <TextBlock Grid.Column="1"
+                   TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+            <Run Text="Delete: " FontWeight="SemiBold" />
+            <Run Text="Permanently removes matched files during Remove For Upload." />
+                </TextBlock>
+            </Grid>
+
+            <Grid Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="28" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                Width="18"
+                Height="18"
+                CornerRadius="5"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultSolidBrush}"
+                Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                VerticalAlignment="Top"
+                Margin="0,1,8,0">
+                    <Viewbox Width="12" Height="12">
+                        <Path Data="{StaticResource TemporaryIconGeometry}"
+                      Stroke="{DynamicResource SystemFillColorCautionBrush}"
+                      StrokeThickness="1.6"
+                      StrokeStartLineCap="Round"
+                      StrokeEndLineCap="Round"
+                      StrokeLineJoin="Round" />
+                    </Viewbox>
+                </Border>
+
+                <TextBlock Grid.Column="1"
+                   TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+            <Run Text="Temp Move: " FontWeight="SemiBold" />
+            <Run Text="Removes matched files during Remove For Upload and restores them on the next Install." />
+                </TextBlock>
+            </Grid>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="28" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                Width="18"
+                Height="18"
+                CornerRadius="5"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultSolidBrush}"
+                Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                VerticalAlignment="Top"
+                Margin="0,1,8,0">
+                    <Viewbox Width="12" Height="12">
+                        <Path Data="{StaticResource ExcludeIconGeometry}"
+                      Stroke="{DynamicResource TextFillColorSecondaryBrush}"
+                      StrokeThickness="1.4"
+                      StrokeStartLineCap="Round"
+                      StrokeEndLineCap="Round"
+                      StrokeLineJoin="Round" />
+                    </Viewbox>
+                </Border>
+
+                <TextBlock Grid.Column="1"
+                   TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextFillColorPrimaryBrush}">
+            <Run Text="! Exclude: " FontWeight="SemiBold" />
+            <Run Text="Prevents matched files from being removed." />
+                </TextBlock>
+            </Grid>
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="0,0,0,16">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
-                <!-- TextBox fills remaining space -->
                 <ColumnDefinition Width="Auto" />
-                <!-- Button takes minimal space -->
             </Grid.ColumnDefinitions>
-        
-            <ListBox Grid.Column="0" ItemsSource="{Binding}" Padding="8" Height="300" BorderBrush="{DynamicResource CardStrokeColorDefaultSolidBrush}" BorderThickness="0" >
+
+            <ListBox Grid.Column="0"
+                     ItemsSource="{Binding}"
+                     Padding="8"
+                     MinHeight="220"
+                     VerticalAlignment="Stretch"
+                     BorderBrush="{DynamicResource CardStrokeColorDefaultSolidBrush}"
+                     BorderThickness="0"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -35,7 +296,6 @@
                                 </ControlTemplate>
                             </Setter.Value>
                         </Setter>
-
                     </Style>
                 </ListBox.ItemContainerStyle>
 
@@ -44,33 +304,83 @@
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
-                                <!-- TextBox fills remaining space -->
                                 <ColumnDefinition Width="Auto" />
-                                <!-- Button takes minimal space -->
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
                             <TextBox Grid.Column="0"
-                                    Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                    HorizontalAlignment="Stretch"
-                                    Margin="0"
-                                    />
-                            <Button Grid.Column="1"
-                                    Background="{DynamicResource SystemFillColorCriticalBackgroundBrush}"
-                                    Content="🗑"
+                                     Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     HorizontalAlignment="Stretch"
+                                     Margin="0" />
+
+                            <ToggleButton Grid.Column="1"
+                                          Margin="8,0,0,0"
+                                          IsChecked="{Binding IsTemporary, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          Style="{StaticResource ModeToggleStyle}"
+                                          Visibility="{Binding IsExcludePattern, Converter={StaticResource InvertBoolToVisibilityConverter}}"
+                                          ToolTip="Red X deletes matched files permanently. Yellow arrow moves them aside and restores them on the next Install." />
+
+                            <Border Grid.Column="1"
+                                    Width="52"
+                                    Height="24"
+                                    Margin="8,0,0,0"
+                                    CornerRadius="12"
+                                    Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                                    BorderBrush="{DynamicResource CardStrokeColorDefaultSolidBrush}"
+                                    BorderThickness="1"
+                                    VerticalAlignment="Center"
+                                    Visibility="{Binding IsExcludePattern, Converter={StaticResource BoolToVisibilityConverter}}"
+                                    ToolTip="Exclude: this rule filters files out of other matches.">
+                                <Viewbox Width="10" Height="10">
+                                    <Path Data="{StaticResource ExcludeIconGeometry}"
+                                          Stroke="{DynamicResource TextFillColorSecondaryBrush}"
+                                          StrokeThickness="1.4"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round" />
+                                </Viewbox>
+                            </Border>
+
+                            <Button Grid.Column="2"
+                                    Margin="8,0,0,0"
+                                    ToolTip="Remove this rule"
                                     Command="{Binding DataContext.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                    CommandParameter="{Binding}" 
-                                    Margin="4,0,0,0"
-                                    />
+                                    CommandParameter="{Binding}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource CompactIconButtonStyle}">
+                                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                                                <Setter Property="Foreground" Value="White" />
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                                                <Setter Property="Foreground" Value="White" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <Viewbox Width="12" Height="12">
+                                    <Path Data="{StaticResource RemoveRuleIconGeometry}"
+                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          StrokeThickness="1.8"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round" />
+                                </Viewbox>
+                            </Button>
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
 
-            <StackPanel Orientation="Vertical" Grid.Column="1" VerticalAlignment="Top">
-                <Button Grid.Column="1" Content="Add" Margin="10,10,0,0" HorizontalAlignment="Center" Command="{Binding AddEntryCommand}" />
-                <Button Grid.Column="1" Content="View Files" Margin="10,10,0,0" HorizontalAlignment="Center" Click="Button_Click" />
+            <StackPanel Orientation="Vertical" Grid.Column="1" VerticalAlignment="Top" Margin="10,0,0,0">
+                <Button Grid.Column="1" Content="Add Rule" Width="85" Margin="0,0,0,10" HorizontalAlignment="Center" Command="{Binding AddEntryCommand}" />
+                <Button Grid.Column="1" Content="View Files" Width="85" HorizontalAlignment="Center" Click="Button_Click" />
             </StackPanel>
 
         </Grid>
-    </StackPanel>
+    </Grid>
 </UserControl>
