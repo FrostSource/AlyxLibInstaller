@@ -145,7 +145,7 @@
                     <local:InfoBar x:Name="AlyxLibTopInfoBar" Message="" Severity="Informational" IsClosable="True" IsOpen="False" />
 
                     <local:InfoBar 
-                               Message="Remember to Install again after uploading your addon to the workshop!"
+                               Message="AlyxLib was removed for upload. After uploading, click Install to restore it."
                                Severity="Success"
                                IsClosable="True"
                                IsOpen="{Binding AlyxLibRemovedFromAddonForUpload}"
@@ -228,7 +228,7 @@
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition/>
-                                <RowDefinition/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
                             <Button Grid.Column="0" Grid.Row="0"
@@ -237,7 +237,11 @@
                                     Margin="16,8,16,8"
                                     Command="{Binding InstallAlyxLibCommand}"
                                     Style="{DynamicResource AccentButtonStyle}"
-                                    />
+                                    RenderTransformOrigin="0.5,0.5">
+                                <Button.RenderTransform>
+                                    <ScaleTransform ScaleX="1" ScaleY="1" />
+                                </Button.RenderTransform>
+                            </Button>
                         <!--<Button x:Name="UninstallButton" Content="Remove For Upload" Click="UninstallButton_Click" Margin="16"/>-->
 
                             <Grid Grid.Column="1" Grid.Row="0" Height="32">
@@ -285,9 +289,9 @@
                                         />
                             </Grid>
 
+                            
 
-
-                            <TextBlock Grid.Row="1" Grid.Column="1" Foreground="{DynamicResource SystemFillColorCautionBrush}" FontSize="10" Visibility="{Binding FileRemovalCount, Converter={StaticResource CountToVisibilityConverter}}">
+                            <TextBlock Grid.Row="2" Grid.Column="1" Foreground="{DynamicResource SystemFillColorCautionBrush}" FontSize="10" Visibility="{Binding FileRemovalCount, Converter={StaticResource CountToVisibilityConverter}}">
                                 <Hyperlink Foreground="{DynamicResource SystemFillColorCautionBrush}" Command="{Binding ShowFileRemovalFilesCommand}">
                                     ⓘ
                                     <Run Text="Matched files (" />
