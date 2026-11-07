@@ -1,4 +1,4 @@
-using Microsoft.Extensions.FileSystemGlobbing;
+﻿using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
 
 namespace AlyxLib.Services;
@@ -106,6 +106,36 @@ public class FileGlobService
             .Where(pair => IsSafeToRemove(dir, pair.Key))
             .OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
             .Select(pair => new FileRemovalMatch(pair.Key, pair.Value))];
+    }
+
+    /// <summary>
+    /// Gets which of the given relative paths match the rules, without touching the disk.
+    /// Unlike <see cref="GetMatchingFileActions"/>, paths reached through links are matched too.
+    /// </summary>
+    /// <returns>The matching paths, using forward slashes.</returns>
+    public IReadOnlySet<string> MatchRelativePaths(IEnumerable<string> relativePaths)
+    {
+        // The matcher needs rooted paths, so a fake root is used and stripped again
+        var root = Path.GetFullPath(Path.DirectorySeparatorChar + "root");
+        var paths = relativePaths.Select(path => Path.Combine(root, path)).ToList();
+        var matched = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Excludes are applied after all includes, the same as GetMatchingFileActions
+        foreach (var rule in _rules.OrderBy(rule => rule.IsExclude))
+        {
+            var matcher = new Matcher(StringComparison.OrdinalIgnoreCase);
+            matcher.AddInclude(rule.Pattern);
+
+            foreach (var file in matcher.Match(root, paths).Files)
+            {
+                if (rule.IsExclude)
+                    matched.Remove(file.Path);
+                else
+                    matched.Add(file.Path);
+            }
+        }
+
+        return matched;
     }
 
     public IEnumerable<string> GetMatchingFiles(string dir) =>

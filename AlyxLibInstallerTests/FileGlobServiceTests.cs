@@ -1,4 +1,4 @@
-using AlyxLib.Services;
+﻿using AlyxLib.Services;
 
 namespace AlyxLibInstaller.Tests;
 
@@ -119,20 +119,17 @@ public class FileGlobServiceTests
             service.GetMatchingFileActions(Path.Combine(_rootPath, "addon")).ToArray());
     }
 
-    private static void CreateJunction(string linkPath, string targetPath)
+    [TestMethod]
+    public void MatchRelativePaths_MatchesWithoutTouchingDisk()
     {
-        // Junctions don't need admin rights or developer mode, unlike symlinks
-        var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-        {
-            FileName = "cmd.exe",
-            Arguments = $"/c mklink /J \"{linkPath}\" \"{targetPath}\"",
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true
-        })!;
-        process.WaitForExit();
-        Assert.AreEqual(0, process.ExitCode, "Failed to create junction for test");
+        var service = new FileGlobService(["TMP:save/**", "maps/*.vmap_c", "!maps/keep.vmap_c"]);
+
+        var matched = service.MatchRelativePaths(["save/quick.sav", "maps/test.vmap_c", "maps/keep.vmap_c", "models/watch.vmdl_c"]);
+
+        CollectionAssert.AreEquivalent(new[] { "save/quick.sav", "maps/test.vmap_c" }, matched.ToArray());
     }
+
+    private static void CreateJunction(string linkPath, string targetPath) => AlyxLibInstallerTests.TestFileSystem.CreateJunction(linkPath, targetPath);
 
     private void WriteFile(string relativePath, string contents = "test")
     {

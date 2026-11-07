@@ -633,7 +633,9 @@ public class FileManager
         if (File.Exists(configPath))
             File.Delete(configPath);
 
-        Directory.Delete(configFolder, recursive: true);
+        // Other files, like the Workshop item link, aren't part of AlyxLib so they're kept
+        if (!Directory.EnumerateFileSystemEntries(configFolder).Any())
+            Directory.Delete(configFolder);
     }
 
     private static void WriteAllText(string path, string contents)
