@@ -31,7 +31,22 @@
                 <TextBox Text="{Binding TextBoxText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          local:TextBoxHelper.Placeholder="{Binding TextBoxPlaceholderText}"
                          x:Name="InputBox"
-                         />
+                         >
+                    <TextBox.Style>
+                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding TextBoxIsMultiline}" Value="True">
+                                    <Setter Property="AcceptsReturn" Value="True" />
+                                    <Setter Property="TextWrapping" Value="Wrap" />
+                                    <Setter Property="MinHeight" Value="100" />
+                                    <Setter Property="MaxHeight" Value="240" />
+                                    <Setter Property="VerticalContentAlignment" Value="Top" />
+                                    <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBox.Style>
+                </TextBox>
                 <TextBlock Text="{Binding TextBoxInvalidMessage}"
                        Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                        FontSize="11"

@@ -11,6 +11,8 @@
 
     <!--ThemeMode error-->
     <NoWarn>$(NoWarn);WPF0001</NoWarn>
+    <!-- Bundles steam_api64.dll into single file publishes, which only ship the exe -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <PackageProjectUrl></PackageProjectUrl>
     <Description>Manage and configure your AlyxLib addons with ease.</Description>
     <RepositoryUrl>https://github.com/FrostSource/AlyxLibInstaller</RepositoryUrl>

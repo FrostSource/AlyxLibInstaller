@@ -17,8 +17,8 @@ public class VpkPackerTests
 
     private string GamePath => _fs.PathOf("game");
 
-    private string[] PackPaths(IEnumerable<string>? removalGlobs = null, string? alyxLibPath = null) =>
-        [.. VpkPacker.GetFiles(GamePath, removalGlobs ?? [], alyxLibPath).Select(file => file.PackPath)];
+    private string[] PackPaths(IEnumerable<string>? removalGlobs = null, IEnumerable<string>? excludedPaths = null) =>
+        [.. VpkPacker.GetFiles(GamePath, removalGlobs ?? [], excludedPaths ?? []).Select(file => file.PackPath)];
 
     [TestMethod]
     public void ToolsFilesAreLeftOut()
@@ -51,7 +51,7 @@ public class VpkPackerTests
         _fs.WriteFile("content/scripts/vscripts/my_mod/init.lua");
         _fs.Junction("game/scripts", "content/scripts");
 
-        var files = VpkPacker.GetFiles(GamePath, [], null);
+        var files = VpkPacker.GetFiles(GamePath, [], []);
 
         Assert.AreEqual("scripts/vscripts/my_mod/init.lua", files.Single().PackPath);
         Assert.AreEqual(_fs.PathOf(@"game\scripts\vscripts\my_mod\init.lua"), files.Single().SourcePath);
@@ -65,7 +65,24 @@ public class VpkPackerTests
         _fs.Junction("content/scripts/vscripts/alyxlib", "alyxlib/scripts/vscripts/alyxlib");
         _fs.Junction("game/scripts", "content/scripts");
 
-        CollectionAssert.AreEqual(new[] { "scripts/vscripts/my_mod/init.lua" }, PackPaths(alyxLibPath: _fs.PathOf("alyxlib")));
+        CollectionAssert.AreEqual(new[] { "scripts/vscripts/my_mod/init.lua" }, PackPaths(excludedPaths: [_fs.PathOf("alyxlib")]));
+    }
+
+    [TestMethod]
+    public void ExcludedFilesAreLeftOutWhenReachedThroughLinks()
+    {
+        // AlyxLib files are excluded by their content path, but packed from the game folder through the scripts link
+        _fs.WriteFile("content/scripts/vscripts/game/gameinit.lua");
+        _fs.WriteFile("content/scripts/vscripts/my_mod/init.lua");
+        _fs.WriteFile("game/panorama/scripts/custom_game/panorama_lua.vjs_c");
+        _fs.Junction("game/scripts", "content/scripts");
+
+        var paths = PackPaths(excludedPaths: [
+            _fs.PathOf(@"content\scripts\vscripts\game\gameinit.lua"),
+            _fs.PathOf(@"game\panorama\scripts\custom_game\panorama_lua.vjs_c")
+        ]);
+
+        CollectionAssert.AreEqual(new[] { "scripts/vscripts/my_mod/init.lua" }, paths);
     }
 
     [TestMethod]
@@ -134,7 +151,7 @@ public class VpkPackerTests
         _fs.Junction("game/scripts", "content/scripts");
         var vpkPath = _fs.PathOf("vpks/1/1.vpk");
 
-        new VpkPacker(RealVpkExe).Pack(VpkPacker.GetFiles(GamePath, [], null), vpkPath);
+        new VpkPacker(RealVpkExe).Pack(VpkPacker.GetFiles(GamePath, [], []), vpkPath);
 
         var list = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(RealVpkExe, $"l \"{vpkPath}\"")
         {

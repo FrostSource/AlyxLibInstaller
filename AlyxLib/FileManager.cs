@@ -1,6 +1,7 @@
 ﻿using AlyxLib.Logging;
 using AlyxLib.Services;
 using FileDeployment;
+using FileDeployment.Operations;
 using Source2HelperLibrary;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -444,6 +445,23 @@ public class FileManager
         }
 
         Logger?.Log("Necessary files have been removed! You may now upload your addon to the workshop.", LogType.Success);
+    }
+
+    /// <summary>
+    /// Gets the AlyxLib files and folders that Remove For Upload would remove, so packing can leave them out without changing the addon.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The AlyxLib deployment manifest couldn't be loaded.</exception>
+    public IReadOnlyList<string> GetUploadExcludedPaths(LocalAddon addon, AddonConfig options)
+    {
+        if (!TryGetDeploymentManifest(addon, options, out var manifest, out _))
+            throw new InvalidOperationException("The AlyxLib deployment manifest couldn't be loaded.");
+
+        return [
+            manager.AlyxLibPath.FullName,
+            .. manifest.Categories["vscript"].Where(operation => operation.Remove == true).Select(operation => operation.GetDeploymentPath()),
+            // Deleting is the deployment for these, so the path to remove is their source
+            .. manifest.Categories["upload_removal"].OfType<DeleteFileOperation>().Select(operation => (string)operation.Source)
+        ];
     }
 
     /// <summary>

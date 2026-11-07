@@ -25,6 +25,8 @@ public partial class PromptDialogViewModel : ObservableObject
     [ObservableProperty]
     public partial string TextBoxInvalidMessage { get; set; }
     [ObservableProperty]
+    public partial bool TextBoxIsMultiline { get; set; } = false;
+    [ObservableProperty]
     public partial double? DialogWidth { get; set; }
 
     // UI State
@@ -54,6 +56,7 @@ public partial class PromptDialogViewModel : ObservableObject
         TextBoxDefaultText = config.TextBoxDefaultText;
         TextBoxValidator = config.TextBoxValidator;
         TextBoxInvalidMessage = config.TextBoxInvalidMessage ?? "";
+        TextBoxIsMultiline = config.TextBoxIsMultiline ?? false;
         DialogWidth = config.Width;
 
         TextBoxText = TextBoxDefaultText ?? "";

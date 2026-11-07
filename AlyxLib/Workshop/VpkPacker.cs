@@ -42,15 +42,20 @@ public class VpkPacker(string vpkExePath, Func<string, (int ExitCode, string Out
 
     /// <summary>
     /// Gets the files that would be packed from an addon's game folder.
-    /// Links are followed like the Workshop tools do, except links into AlyxLib, which isn't shipped with the addon.
+    /// Links are followed like the Workshop tools do.
     /// </summary>
     /// <param name="removalGlobs">The addon's upload removal rules. Matching files are left out.</param>
-    /// <param name="alyxLibPath">The AlyxLib folder, or null to follow every link.</param>
-    public static IReadOnlyList<PackFile> GetFiles(string gamePath, IEnumerable<string> removalGlobs, string? alyxLibPath)
+    /// <param name="excludedPaths">
+    /// Files and folders to leave out, such as AlyxLib, which isn't shipped with the addon.
+    /// Matched against both the path in the addon and the real path a link points to.
+    /// </param>
+    public static IReadOnlyList<PackFile> GetFiles(string gamePath, IEnumerable<string> removalGlobs, IEnumerable<string> excludedPaths)
     {
         var files = new List<PackFile>();
-        var visitedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Path.GetFullPath(gamePath) };
-        AddFiles(new DirectoryInfo(gamePath), "", alyxLibPath, files, visitedFolders);
+        var fullGamePath = Path.GetFullPath(gamePath);
+        var visitedFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { fullGamePath };
+        var fullExcludedPaths = excludedPaths.Where(path => !string.IsNullOrEmpty(path)).Select(Path.GetFullPath).ToList();
+        AddFiles(new DirectoryInfo(fullGamePath), fullGamePath, "", fullExcludedPaths, files, visitedFolders);
 
         var packPaths = files.Select(file => file.PackPath).ToList();
         var excluded = new FileGlobService(DefaultExcludes).MatchRelativePaths(packPaths)
@@ -62,12 +67,16 @@ public class VpkPacker(string vpkExePath, Func<string, (int ExitCode, string Out
             .OrderBy(file => file.PackPath, StringComparer.OrdinalIgnoreCase)];
     }
 
-    private static void AddFiles(DirectoryInfo folder, string packFolder, string? alyxLibPath, List<PackFile> files, HashSet<string> visitedFolders)
+    /// <param name="realFolder">Where <paramref name="folder"/> really is, after following any links to it.</param>
+    private static void AddFiles(DirectoryInfo folder, string realFolder, string packFolder, List<string> excludedPaths, List<PackFile> files, HashSet<string> visitedFolders)
     {
         foreach (var entry in folder.EnumerateFileSystemInfos())
         {
             var packPath = packFolder.Length == 0 ? entry.Name : $"{packFolder}/{entry.Name}";
-            var realPath = entry.FullName;
+            var realPath = Path.Combine(realFolder, entry.Name);
+
+            if (IsExcluded(entry.FullName, excludedPaths) || IsExcluded(realPath, excludedPaths))
+                continue;
 
             if (entry.Attributes.HasFlag(FileAttributes.ReparsePoint))
             {
@@ -76,16 +85,16 @@ public class VpkPacker(string vpkExePath, Func<string, (int ExitCode, string Out
                 if (target == null || !target.Exists)
                     continue;
 
-                realPath = target.FullName;
-                if (alyxLibPath != null && (FileUtils.PathsAreEqual(realPath, alyxLibPath) || FileUtils.IsInsideFolder(realPath, alyxLibPath)))
+                realPath = Path.GetFullPath(target.FullName);
+                if (IsExcluded(realPath, excludedPaths))
                     continue;
             }
 
             if (entry is DirectoryInfo directory)
             {
                 // Guards against links that loop back on themselves
-                if (visitedFolders.Add(Path.GetFullPath(realPath)))
-                    AddFiles(directory, packPath, alyxLibPath, files, visitedFolders);
+                if (visitedFolders.Add(realPath))
+                    AddFiles(directory, realPath, packPath, excludedPaths, files, visitedFolders);
             }
             else
             {
@@ -93,6 +102,9 @@ public class VpkPacker(string vpkExePath, Func<string, (int ExitCode, string Out
             }
         }
     }
+
+    private static bool IsExcluded(string path, List<string> excludedPaths) =>
+        excludedPaths.Any(excluded => FileUtils.PathsAreEqual(path, excluded) || FileUtils.IsInsideFolder(path, excluded));
 
     /// <summary>
     /// Packs the files into a new VPK, replacing any existing one.

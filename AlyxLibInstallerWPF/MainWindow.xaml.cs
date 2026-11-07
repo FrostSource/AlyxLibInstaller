@@ -42,7 +42,7 @@ public partial class MainWindow : Window
         AttachViewModel(DataContext as AlyxLibInstallerSharedViewModel);
     }
 
-    private void UninstallSplitButton_Click(object sender, RoutedEventArgs e)
+    private void SplitButtonArrow_Click(object sender, RoutedEventArgs e)
     {
         e.Handled = true; // prevents bubbling to main button
 

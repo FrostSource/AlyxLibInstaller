@@ -19,6 +19,7 @@ public record DialogConfiguration
     public string? TextBoxDefaultText { get; init; }
     public Func<string?, bool>? TextBoxValidator { get; init; }
     public string? TextBoxInvalidMessage { get; init; }
+    public bool? TextBoxIsMultiline { get; init; }
 
     public int? Width { get; init; }
 
@@ -59,6 +60,7 @@ public record DialogConfiguration
         TextBoxDefaultText = other.TextBoxDefaultText ?? TextBoxDefaultText,
         TextBoxValidator = other.TextBoxValidator ?? TextBoxValidator,
         TextBoxInvalidMessage = other.TextBoxInvalidMessage ?? TextBoxInvalidMessage,
+        TextBoxIsMultiline = other.TextBoxIsMultiline ?? TextBoxIsMultiline,
         Width = other.Width ?? Width,
         IconType = other.IconType ?? IconType
     };

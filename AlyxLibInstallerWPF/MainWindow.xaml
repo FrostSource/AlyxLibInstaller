@@ -41,6 +41,9 @@
             <MenuItem Header="Remove Unticked Items" Command="{Binding UninstallAlyxLibCommand}" />
             <MenuItem Header="Remove All AlyxLib Files" Command="{Binding RemoveAllAlyxLibFilesCommand}" />
         </ContextMenu>
+        <ContextMenu x:Key="UploadContextMenu">
+            <MenuItem Header="Open Workshop Page" Command="{Binding OpenWorkshopPageCommand}" />
+        </ContextMenu>
     </Window.Resources>
     <!--<Window.DataContext>-->
         <!--<vm:AlyxLibInstallerSharedViewModel/>-->
@@ -226,6 +229,7 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
                                 <RowDefinition/>
@@ -264,7 +268,7 @@
                                 <!-- Arrow button -->
                                 <Button Grid.Row="0" Grid.Column="1"
                                         VerticalAlignment="Stretch"
-                                        Click="UninstallSplitButton_Click"
+                                        Click="SplitButtonArrow_Click"
                                         ContextMenu="{StaticResource UninstallContextMenu}"
                                         Background="{Binding Background, ElementName=RemoveForUploadButton}"
                                         BorderBrush="{Binding BorderBrush, ElementName=RemoveForUploadButton}"
@@ -281,6 +285,45 @@
                                     
                                 </Button>
                                 
+                                <Border Grid.Column="1"
+                                        Width="2"
+                                        HorizontalAlignment="Left"
+                                        Background="{DynamicResource ControlStrongStrokeColorDefaultBrush}"
+                                        Margin="0,2"
+                                        CornerRadius="2,0,0,2"
+                                        />
+                            </Grid>
+
+                            <Grid Grid.Column="2" Grid.Row="0" Height="32" Margin="16,0,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition />
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Button Grid.Column="0" Grid.Row="0"
+                                        Padding="12,4"
+                                        x:Name="UploadButton"
+                                        Content="Upload"
+                                        ToolTip="Pack this addon and upload it as an update to its Workshop item, without removing any files"
+                                        Command="{Binding UploadToWorkshopCommand}"
+                                        />
+
+                                <Button Grid.Row="0" Grid.Column="1"
+                                        VerticalAlignment="Stretch"
+                                        Click="SplitButtonArrow_Click"
+                                        ContextMenu="{StaticResource UploadContextMenu}"
+                                        Background="{Binding Background, ElementName=UploadButton}"
+                                        BorderBrush="{Binding BorderBrush, ElementName=UploadButton}"
+                                        BorderThickness="{Binding BorderThickness, ElementName=UploadButton}"
+                                        Padding="0" Width="32" Height="{Binding ActualHeight, ElementName=UploadButton}"
+                                        >
+                                    <Path Data="M 0,0 L 5,5 L 10,0"
+                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2"
+                                          Width="10" Height="6"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          />
+                                </Button>
+
                                 <Border Grid.Column="1"
                                         Width="2"
                                         HorizontalAlignment="Left"
