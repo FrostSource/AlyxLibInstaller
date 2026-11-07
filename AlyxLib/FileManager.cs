@@ -39,6 +39,12 @@ public class FileManager
     private static string GetUploadRemovalTemporaryStoragePath(LocalAddon addon) =>
         Path.Combine(addon.ContentPath, ".alyxlib", UploadRemovalTemporaryFolderName);
 
+    /// <summary>
+    /// Checks if the addon has files moved out by Remove For Upload that haven't been restored yet.
+    /// </summary>
+    public static bool HasTemporarilyMovedUploadFiles(LocalAddon addon) =>
+        Directory.Exists(GetUploadRemovalTemporaryStoragePath(addon));
+
     private bool RestoreTemporarilyMovedUploadFiles(LocalAddon addon)
     {
         var temporaryStoragePath = GetUploadRemovalTemporaryStoragePath(addon);
@@ -215,7 +221,12 @@ public class FileManager
 
     public void InstallAlyxLib(LocalAddon addon, AddonConfig options)
     {
-        if (!TryGetDeploymentManifest(addon, options, out var manifest, out var logger)) { return; }
+        if (!TryGetDeploymentManifest(addon, options, out var manifest, out var logger))
+        {
+            // Moved files don't need the manifest, so don't leave them stranded
+            RestoreTemporarilyMovedUploadFiles(addon);
+            return;
+        }
 
         AddonConfig currentConfig = AlyxLibHelpers.GetAddonConfig(addon);
 
@@ -612,7 +623,11 @@ public class FileManager
         // The repository holds the user's own history, so it's only deleted when explicitly asked for
         installedConfig.GitInstalled = !removeGitRepository;
 
-        if (!TryGetDeploymentManifest(addon, installedConfig, out var manifest, out var logger)) { return; }
+        if (!TryGetDeploymentManifest(addon, installedConfig, out var manifest, out var logger))
+        {
+            RestoreTemporarilyMovedUploadFiles(addon);
+            return;
+        }
 
         //UninstallAlyxLibOptions(addon, installedConfig);
         (_, int failedOperations, int successfulOperations) = UninstallAlyxLibOptions(manifest, addon, installedConfig);
