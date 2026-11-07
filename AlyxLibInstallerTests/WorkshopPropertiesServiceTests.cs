@@ -72,7 +72,7 @@ public class WorkshopPropertiesServiceTests
     }
 
     [TestMethod]
-    public void OnlyPropertiesMarkedToUpdateAreSent()
+    public void OnlyDifferingPropertiesAreSentWhenUpdatingTheWorkshop()
     {
         Link(properties =>
         {
@@ -82,7 +82,7 @@ public class WorkshopPropertiesServiceTests
         _dialogs.OnPopupShown = popup =>
         {
             var editor = (WorkshopPropertiesEditorViewModel)popup;
-            editor.Mismatches.Single(mismatch => mismatch.Field == WorkshopFields.Title).UpdateWorkshop = true;
+            editor.UpdateWorkshop = true;
         };
         _dialogs.Respond(DialogResult.Primary);
 
@@ -90,7 +90,8 @@ public class WorkshopPropertiesServiceTests
 
         var update = _client.Submitted.Single();
         Assert.AreEqual("Local title", update.Title);
-        Assert.IsNull(update.Visibility);
+        Assert.AreEqual(WorkshopVisibility.Private, update.Visibility);
+        Assert.IsNull(update.Description);
         Assert.IsNull(update.ContentFolder);
         Assert.IsNull(update.PreviewFile);
     }
@@ -164,7 +165,7 @@ public class WorkshopPropertiesServiceTests
     {
         Link(properties => properties.Title = "Local title");
         var connects = 0;
-        _dialogs.OnPopupShown = popup => ((WorkshopPropertiesEditorViewModel)popup).Mismatches.Single().UpdateWorkshop = true;
+        _dialogs.OnPopupShown = popup => ((WorkshopPropertiesEditorViewModel)popup).UpdateWorkshop = true;
         _dialogs.Respond(DialogResult.Primary);
 
         Assert.IsTrue(Edit(() => ++connects == 1 ? _client : throw new WorkshopException("Lost connection to Steam.")));

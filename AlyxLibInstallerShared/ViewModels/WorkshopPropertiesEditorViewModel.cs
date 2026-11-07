@@ -18,8 +18,6 @@ public partial class WorkshopTagOption(string name, bool isSelected) : Observabl
 
 public partial class WorkshopTagGroupOption : ObservableObject
 {
-    public const string NoChoice = "None";
-
     public string Name { get; }
     public IReadOnlyList<WorkshopTagOption> Tags { get; }
 
@@ -31,13 +29,16 @@ public partial class WorkshopTagGroupOption : ObservableObject
     public IReadOnlyList<string> Choices { get; }
 
     /// <summary>
-    /// The chosen tag of a single choice group, or <see cref="NoChoice"/>. Choosing one clears the group's others.
+    /// The chosen tag of a single choice group, or null before one is chosen. Choosing one clears the group's others.
+    /// Like the Workshop tools, a choice can be changed but not cleared.
     /// </summary>
-    public string Choice
+    public string? Choice
     {
-        get => Tags.FirstOrDefault(tag => tag.IsSelected)?.Name ?? NoChoice;
+        get => Tags.FirstOrDefault(tag => tag.IsSelected)?.Name;
         set
         {
+            if (value == null)
+                return;
             foreach (var tag in Tags)
                 tag.IsSelected = tag.Name == value;
         }
@@ -48,7 +49,7 @@ public partial class WorkshopTagGroupOption : ObservableObject
         Name = name;
         Tags = tags;
         SingleChoice = singleChoice;
-        Choices = [NoChoice, .. tags.Select(tag => tag.Name)];
+        Choices = [.. tags.Select(tag => tag.Name)];
         foreach (var tag in tags)
             tag.PropertyChanged += (_, _) => OnPropertyChanged(nameof(Choice));
     }
@@ -73,12 +74,6 @@ public partial class WorkshopPropertyMismatch(WorkshopFields field, string name)
 
     [ObservableProperty]
     public partial bool CanUseWorkshopVersion { get; set; } = true;
-
-    /// <summary>
-    /// Replace the Workshop's value with the addon's when saving.
-    /// </summary>
-    [ObservableProperty]
-    public partial bool UpdateWorkshop { get; set; }
 }
 
 /// <summary>
@@ -190,12 +185,15 @@ public partial class WorkshopPropertiesEditorViewModel : ObservableObject
             var preview = new FileInfo(WorkshopProperties.ResolvePath(_contentPath, PreviewFile));
             if (!preview.Exists)
                 return $"{preview.Name} wasn't found";
-            var info = $"{preview.Name}, {Utils.FormatFileSize(preview.Length)}.";
+            var info = $"{preview.Name}, {Utils.FormatFileSize(preview.Length)}";
+            var isGif = preview.Extension.Equals(".gif", StringComparison.OrdinalIgnoreCase);
             if (preview.Length > PreviewImages.MaxBytes)
-                return $"{info} It's over 1 MB, so it's compressed to a JPEG when uploaded.";
+                return isGif
+                    ? $"{info}. It's over 1 MB, so only its first frame is uploaded, compressed to a JPEG."
+                    : $"{info}. It's over 1 MB, so it's compressed to a JPEG when uploaded.";
             if (PreviewImages.NeedsConverting(preview.FullName))
-                return $"{info} Steam doesn't take this format, so it's converted to a JPEG when uploaded.";
-            return $"{info} Uploaded as it is.";
+                return $"{info}. Steam doesn't take this format, so it's converted to a JPEG when uploaded.";
+            return info;
         }
     }
 
@@ -222,10 +220,27 @@ public partial class WorkshopPropertiesEditorViewModel : ObservableObject
     public bool HasMismatches => Mismatches.Count > 0;
 
     /// <summary>
-    /// The properties marked to replace the Workshop's values when saving.
+    /// The properties that differ, e.g. "Title, Tags".
     /// </summary>
-    public WorkshopFields FieldsToUpdate => Mismatches
-        .Where(mismatch => mismatch.UpdateWorkshop)
+    public string MismatchSummary => string.Join(", ", Mismatches.Select(mismatch => mismatch.Name));
+
+    /// <summary>
+    /// Each difference with the Workshop's value, for a tooltip.
+    /// </summary>
+    public string MismatchDetails => string.Join("\n", Mismatches.Select(mismatch => $"{mismatch.Name} on the Workshop: {mismatch.WorkshopValue}"));
+
+    /// <summary>
+    /// Replace the Workshop's values with the addon's when saving. It starts on unless the Workshop was already
+    /// different when the editor opened, e.g. after editing on the Workshop page, so those edits aren't lost unasked.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FieldsToUpdate))]
+    public partial bool UpdateWorkshop { get; set; }
+
+    /// <summary>
+    /// The properties to replace on the Workshop when saving.
+    /// </summary>
+    public WorkshopFields FieldsToUpdate => !UpdateWorkshop ? WorkshopFields.None : Mismatches
         .Aggregate(WorkshopFields.None, (fields, mismatch) => fields | mismatch.Field);
 
     /// <summary>
@@ -270,8 +285,13 @@ public partial class WorkshopPropertiesEditorViewModel : ObservableObject
             RefreshMismatches();
         };
 
-        Mismatches.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasMismatches));
+        Mismatches.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(HasMismatches));
+            OnPropertyChanged(nameof(MismatchSummary));
+        };
         RefreshMismatches();
+        UpdateWorkshop = !HasMismatches;
     }
 
     private static List<WorkshopTagGroupOption> CreateTagGroups(IReadOnlyList<string> selected, IReadOnlyList<string> remoteTags)
@@ -379,11 +399,6 @@ public partial class WorkshopPropertiesEditorViewModel : ObservableObject
             if (mismatch == null)
             {
                 mismatch = new WorkshopPropertyMismatch(field, GetName(field));
-                mismatch.PropertyChanged += (_, e) =>
-                {
-                    if (e.PropertyName == nameof(WorkshopPropertyMismatch.UpdateWorkshop))
-                        OnPropertyChanged(nameof(FieldsToUpdate));
-                };
                 Mismatches.Add(mismatch);
             }
 
@@ -393,6 +408,7 @@ public partial class WorkshopPropertiesEditorViewModel : ObservableObject
         }
 
         OnPropertyChanged(nameof(FieldsToUpdate));
+        OnPropertyChanged(nameof(MismatchDetails));
     }
 
     private static string GetName(WorkshopFields field) => field switch
@@ -428,7 +444,16 @@ public partial class WorkshopPropertiesEditorViewModel : ObservableObject
         return firstLine.Length > 80 ? firstLine[..80] + "…" : firstLine;
     }
 
+    /// <summary>
+    /// Replaces every differing property with the Workshop's value, except a linked description file.
+    /// </summary>
     [RelayCommand]
+    private void UseWorkshopVersions()
+    {
+        foreach (var mismatch in Mismatches.ToList())
+            UseWorkshopVersion(mismatch);
+    }
+
     private void UseWorkshopVersion(WorkshopPropertyMismatch mismatch)
     {
         if (_remote == null || !mismatch.CanUseWorkshopVersion)

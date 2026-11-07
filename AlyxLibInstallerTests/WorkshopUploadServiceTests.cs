@@ -359,7 +359,7 @@ public class WorkshopUploadServiceTests
         var notes = _dialogs.Shown[2].Config!;
         Assert.AreEqual("Create and Upload", notes.PrimaryButtonText);
         Assert.AreEqual("Created Resin Watch.", notes.TextBoxDefaultText);
-        StringAssert.StartsWith(notes.Message, "Uploading 1 file,");
+        StringAssert.StartsWith(notes.Message, "Packing 1 file (");
         Assert.AreEqual(1, _client.CreatedCount);
         var update = _client.Submitted.Single();
         Assert.AreEqual(_client.CreatedItemId, update.ItemId);
@@ -531,7 +531,7 @@ public class WorkshopUploadServiceTests
         Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
 
         Assert.AreEqual("Upload Resin Watch", _dialogs.Shown[0].Config!.Title);
-        StringAssert.StartsWith(_dialogs.Shown[0].Config!.Message, "Uploading 3 files,");
+        StringAssert.StartsWith(_dialogs.Shown[0].Config!.Message, "Packing 3 files (");
     }
 
     [TestMethod]

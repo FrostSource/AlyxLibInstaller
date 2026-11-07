@@ -28,8 +28,27 @@
         </Style>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Width="780">
-        <StackPanel Margin="0,0,16,0">
+    <DockPanel Width="780">
+        <!-- Properties that differ from the Workshop. Kept below the fields so appearing doesn't move them -->
+        <Border DockPanel.Dock="Bottom" Margin="0,12,16,0" Padding="12,8" CornerRadius="4"
+                Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
+                Visibility="{Binding HasMismatches, Converter={StaticResource BoolToVisibilityConverter}}"
+                ToolTip="{Binding MismatchDetails}">
+            <DockPanel>
+                <Button Content="Use Workshop versions" DockPanel.Dock="Right" Padding="8,2" Margin="8,0,0,0" VerticalAlignment="Center"
+                        Command="{Binding UseWorkshopVersionsCommand}"
+                        ToolTip="Replaces this addon's values with the Workshop's. A linked description file isn't overwritten." />
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock TextWrapping="Wrap">
+                        <Run Text="Different on the Workshop:" FontWeight="SemiBold" />
+                        <Run Text="{Binding MismatchSummary, Mode=OneWay}" />
+                    </TextBlock>
+                    <CheckBox Content="Update the Workshop when saving" IsChecked="{Binding UpdateWorkshop}" Margin="0,4,0,0" MinWidth="0" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">        <StackPanel Margin="0,0,16,0">
 
             <TextBlock Style="{StaticResource Note}"
                        Visibility="{Binding IsNewItem, Converter={StaticResource InvertBoolToVisibilityConverter}}">
@@ -53,42 +72,6 @@
                 </TextBlock>
             </Border>
 
-            <!-- Properties that differ from the Workshop -->
-            <Border Margin="0,12,0,0" Padding="12,8" CornerRadius="4"
-                    Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
-                    Visibility="{Binding HasMismatches, Converter={StaticResource BoolToVisibilityConverter}}">
-                <StackPanel>
-                    <TextBlock FontWeight="SemiBold" TextWrapping="Wrap"
-                               Text="These are different on the Workshop:" />
-                    <ItemsControl ItemsSource="{Binding Mismatches}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:WorkshopPropertyMismatch}">
-                                <StackPanel Margin="0,8,0,0">
-                                    <TextBlock TextWrapping="Wrap">
-                                        <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" />
-                                        <Run Text="on the Workshop:" />
-                                        <Run Text="{Binding WorkshopValue, Mode=OneWay}" />
-                                    </TextBlock>
-                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                        <Button Content="Use Workshop version" Padding="8,2" Margin="0,0,8,0"
-                                                Command="{Binding DataContext.UseWorkshopVersionCommand, ElementName=Root}"
-                                                CommandParameter="{Binding}"
-                                                IsEnabled="{Binding CanUseWorkshopVersion}"
-                                                ToolTipService.ShowOnDisabled="True"
-                                                ToolTip="Replaces this addon's value with the Workshop's. A linked description file isn't overwritten, edit it to match instead." />
-                                        <ToggleButton Content="Update Workshop" Padding="8,2"
-                                                      IsChecked="{Binding UpdateWorkshop}"
-                                                      ToolTip="Replaces the Workshop's value with this addon's when you save" />
-                                    </StackPanel>
-                                    <TextBlock Style="{StaticResource Note}" Margin="0,4,0,0" Text="The Workshop is updated when you save."
-                                               Visibility="{Binding UpdateWorkshop, Converter={StaticResource BoolToVisibilityConverter}}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </StackPanel>
-            </Border>
-
             <Grid Margin="0,12,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="220" />
@@ -104,7 +87,7 @@
                         <Grid>
                             <TextBlock Text="No image chosen" Style="{StaticResource Note}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                        Visibility="{Binding PreviewSource, Converter={StaticResource InvertStringToVisibilityConverter}}" />
-                            <Image Source="{Binding PreviewSource, TargetNullValue={x:Null}}" Stretch="Uniform" />
+                            <Image root:AnimatedImage.Source="{Binding PreviewSource}" Stretch="Uniform" />
                         </Grid>
                     </Border>
                     <Button Content="Choose image…" Padding="8,2" Margin="0,8,0,0" HorizontalAlignment="Stretch"
@@ -241,4 +224,5 @@
 
         </StackPanel>
     </ScrollViewer>
+    </DockPanel>
 </UserControl>

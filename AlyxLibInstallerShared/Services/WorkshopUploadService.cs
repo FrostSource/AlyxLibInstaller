@@ -267,7 +267,7 @@ public class WorkshopUploadService(
         var response = await dialogService.ShowTextPopup(new DialogConfiguration
         {
             Title = $"Upload {title}",
-            Message = $"Uploading {DescribeFiles(files)}.\n\nDescribe what changed in this update. Change notes are shown on the item's Workshop page.",
+            Message = $"{DescribeFiles(files)}\n\nDescribe what changed in this update. Change notes are shown on the item's Workshop page.",
             HasTextBox = true,
             TextBoxIsMultiline = true,
             TextBoxPlaceholderText = "Change notes (optional)",
@@ -377,10 +377,21 @@ public class WorkshopUploadService(
     private const string WorkshopInitFolder = "scripts/vscripts/mods/init";
     private const string WorkshopInitPlaceholder = "0000000000.lua";
 
+    /// <summary>
+    /// The size the Workshop tools refuse to upload over.
+    /// </summary>
+    private const long WorkshopToolsSizeLimit = 2L * 1024 * 1024 * 1024;
+
+    /// <summary>
+    /// Says how much is packed, e.g. "Packing 120 files (3.4 MB) from the addon's game folder into its VPK."
+    /// </summary>
     private static string DescribeFiles(IReadOnlyList<PackFile> files)
     {
         var size = files.Sum(file => new FileInfo(file.SourcePath).Length);
-        return $"{files.Count} file{(files.Count == 1 ? "" : "s")}, {Utils.FormatFileSize(size)}";
+        var description = $"Packing {files.Count} file{(files.Count == 1 ? "" : "s")} ({Utils.FormatFileSize(size)}) from the addon's game folder into its VPK.";
+        return size > WorkshopToolsSizeLimit
+            ? $"{description} That's over 2 GB, which the Workshop tools won't upload, so Steam may reject it."
+            : description;
     }
 
     private IReadOnlyList<PackFile> GetFiles(WorkshopUploadRequest request) =>

@@ -67,8 +67,7 @@ public class WorkshopPropertiesEditorTests
         var editor = Editor(new WorkshopProperties { ItemId = ItemId, Tags = ["Alyx Addon", "Maps"], RequiredItems = [] });
         Assert.AreEqual(2, editor.Mismatches.Count);
 
-        foreach (var mismatch in editor.Mismatches.ToList())
-            editor.UseWorkshopVersionCommand.Execute(mismatch);
+        editor.UseWorkshopVersionsCommand.Execute(null);
 
         Assert.IsFalse(editor.HasMismatches);
         Assert.AreEqual("Scripts & AI, Made up tag", editor.SelectedTagsSummary);
@@ -76,10 +75,12 @@ public class WorkshopPropertiesEditorTests
     }
 
     [TestMethod]
-    public void UpdateWorkshopChoiceIsKeptWhileStillDifferent()
+    public void DifferencesAlreadyThereDontUpdateTheWorkshopUnlessChosen()
     {
         var editor = Editor(new WorkshopProperties { ItemId = ItemId, Title = "Local title" });
-        editor.Mismatches.Single().UpdateWorkshop = true;
+        Assert.IsFalse(editor.UpdateWorkshop);
+        Assert.AreEqual(WorkshopFields.None, editor.FieldsToUpdate);
+        editor.UpdateWorkshop = true;
 
         editor.Title = "Another local title";
         Assert.AreEqual(WorkshopFields.Title, editor.FieldsToUpdate);
@@ -98,6 +99,9 @@ public class WorkshopPropertiesEditorTests
 
         Assert.AreEqual(WorkshopFields.Visibility, editor.Mismatches.Single().Field);
         Assert.AreEqual("Public", editor.Mismatches.Single().WorkshopValue);
+        Assert.AreEqual("Visibility", editor.MismatchSummary);
+        // Edits made here update the Workshop unless the user turns it off
+        Assert.AreEqual(WorkshopFields.Visibility, editor.FieldsToUpdate);
     }
 
     [TestMethod]
@@ -198,6 +202,28 @@ public class WorkshopPropertiesEditorTests
     }
 
     [TestMethod]
+    public void OversizedGifSaysItLosesItsAnimation()
+    {
+        _dialogs.PickFileResult = _fs.WriteFile("preview.gif", new string('x', (int)PreviewImages.MaxBytes + 1));
+        var editor = Editor();
+
+        editor.ChoosePreviewCommand.Execute(null);
+
+        StringAssert.Contains(editor.PreviewInfo, "only its first frame");
+    }
+
+    [TestMethod]
+    public void SmallPreviewOnlyShowsItsSize()
+    {
+        _dialogs.PickFileResult = _fs.WriteFile("preview.png", "image");
+        var editor = Editor();
+
+        editor.ChoosePreviewCommand.Execute(null);
+
+        Assert.AreEqual("preview.png, 5 bytes", editor.PreviewInfo);
+    }
+
+    [TestMethod]
     public void SingleChoiceTagsReplaceEachOther()
     {
         var editor = Editor();
@@ -210,8 +236,10 @@ public class WorkshopPropertiesEditorTests
         CollectionAssert.DoesNotContain(editor.Build().Tags!.ToList(), "Maps");
         Assert.IsFalse(editor.CheckboxTagGroups.Any(group => group.Name == "Length"));
 
-        addonType.Choice = WorkshopTagGroupOption.NoChoice;
-        Assert.IsFalse(addonType.Tags.Any(tag => tag.IsSelected));
+        // Like the Workshop tools, a choice can't be cleared
+        CollectionAssert.DoesNotContain(addonType.Choices.ToList(), "None");
+        addonType.Choice = null;
+        Assert.AreEqual("Developer Resources", addonType.Choice);
     }
 
     [TestMethod]
