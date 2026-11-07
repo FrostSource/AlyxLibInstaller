@@ -22,9 +22,6 @@ public class FileManager
         [
             new(@"scripts\vscripts\alyxlib"),
             new(@"scripts\vscripts\game\gameinit.lua"),
-            //new(@".vscode\alyxlib.code-snippets"),
-            //new(@".vscode\vlua_snippets.code-snippets"),
-            //new(@"scripts") { IsContentFile = false },
         ];
 
     //TODO: Compile these files automatically
@@ -83,7 +80,6 @@ public class FileManager
     {
         if (manager.IssueFound()) return (FileCheckResult.AlyxLibPathNotFound, "Unexpected error occured");
 
-        //if (Repository.IsValid(addon.ContentPath))
         if (GitHelper.FolderHasGitRepository(addon.ContentPath))
             return (FileCheckResult.FullyInstalled, "");
 
@@ -133,8 +129,6 @@ public class FileManager
             var toDir = file.IsContentFile ? addon.ContentPath : addon.GamePath!;
 
             var toInfo = new PathInfo(Path.Combine(toDir, file.To));
-
-            //file.SetAddon(addon);
 
             if (toInfo.Exists)
             {
@@ -307,60 +301,8 @@ public class FileManager
             }
         }
 
-        if (options.GitInstalled)
-        {
-            Logger?.Log("Initializing Git repository...");
-
-            try
-            {
-                // If Git is not installed, exit early
-                if (!GitHelper.IsGitInstalled())
-                {
-                    failureOccurred = true;
-                    Logger?.LogError("Git is not installed");
-                    goto EndGitInstall;
-                }
-
-                // Check if the repository is already initialized
-                //if (Repository.IsValid(addon.ContentPath))
-                if (GitHelper.FolderHasGitRepository(addon.ContentPath))
-                {
-                    Logger?.LogDetail("Git repository already initialized");
-                }
-                else
-                {
-                    //Repository.Init(addon.ContentPath);
-                    GitHelper.InitRepository(addon.ContentPath);
-                    Logger?.LogDetail("Initialized new Git repository");
-                }
-
-                if (TryGetTemplateFile("gitignore.txt", out var gitignore))
-                {
-                    //if (File.Exists(addon.ContentFile(".gitignore")))
-                    if (!GitHelper.CreateGitIgnore(addon.ContentFile(".gitignore"), gitignore))
-                    {
-                        Logger?.LogDetail(".gitignore file already exists so it will not be overwritten");
-                    }
-                    else
-                    {
-                        //WriteAllText(addon.ContentFile(".gitignore"), gitignore);
-                        Logger?.LogDetail("Created .gitignore file");
-                    }
-                }
-                else
-                {
-                    failureOccurred = true;
-                    Logger?.LogError("Gitignore template file not found");
-                }
-            }
-            catch (Exception ex)
-            {
-                failureOccurred = true;
-                Logger?.LogError($"Failed to initialize Git repository: {ex.Message}");
-            }
-
-        EndGitInstall:;
-        }
+        if (options.GitInstalled && !InstallGit(addon))
+            failureOccurred = true;
 
 
         // Post-installation tasks
@@ -379,6 +321,53 @@ public class FileManager
         else
         {
             Logger?.Log("AlyxLib installation complete!", LogType.Success);
+        }
+    }
+
+    /// <summary>
+    /// Initializes a Git repository and .gitignore in the addon content folder.
+    /// </summary>
+    /// <returns>True if successful.</returns>
+    private bool InstallGit(LocalAddon addon)
+    {
+        Logger?.Log("Initializing Git repository...");
+
+        try
+        {
+            if (!GitHelper.IsGitInstalled())
+            {
+                Logger?.LogError("Git is not installed");
+                return false;
+            }
+
+            // Check if the repository is already initialized
+            if (GitHelper.FolderHasGitRepository(addon.ContentPath))
+            {
+                Logger?.LogDetail("Git repository already initialized");
+            }
+            else
+            {
+                GitHelper.InitRepository(addon.ContentPath);
+                Logger?.LogDetail("Initialized new Git repository");
+            }
+
+            if (!TryGetTemplateFile("gitignore.txt", out var gitignore))
+            {
+                Logger?.LogError("Gitignore template file not found");
+                return false;
+            }
+
+            if (GitHelper.CreateGitIgnore(addon.ContentFile(".gitignore"), gitignore))
+                Logger?.LogDetail("Created .gitignore file");
+            else
+                Logger?.LogDetail(".gitignore file already exists so it will not be overwritten");
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogError($"Failed to initialize Git repository: {ex.Message}");
+            return false;
         }
     }
 
@@ -554,71 +543,6 @@ public class FileManager
 
         (bool failureOccurred, int failedOperations, int successfulOperations) = UninstallAlyxLibOptions(manifest, addon, options, removeChangedFiles);
 
-        //manifest.RemoveChangedFiles = removeChangedFiles;
-
-        //bool failureOccurred = false;
-
-        //void undeploy(bool option, string[] categories, string? name = null)
-        //{
-        //    if (!option)
-        //    {
-        //        foreach (string category in categories)
-        //        {
-        //            if (string.IsNullOrEmpty(category)) continue;
-
-        //            if (!manifest.TryUndeployCategory(category, out var result, ignoreRemoveFlags: true))
-        //            {
-        //                Logger?.LogError($"Removal of {name ?? category} encountered errors", LogSeverity.Low);
-        //                failureOccurred = true;
-        //                continue;
-        //            }
-
-        //            if (result.FailedOperations > 0 || result.SuccessfulOperations == 0)
-        //            {
-        //                failureOccurred = true;
-        //                continue;
-        //            }
-
-        //            Logger?.LogDetail($"Removed {name ?? category}");
-        //        }
-        //    }
-        //}
-
-
-        //undeploy(options.VScriptInstalled, [
-        //    "vscript",
-        //    options.EditorType switch
-        //    {
-        //        ScriptEditor.VisualStudioCode => "editor-vscode",
-        //        _ => "",
-        //    }]);
-
-        //undeploy(options.PanoramaInstalled, ["panorama"]);
-        //undeploy(options.SoundEventInstalled, ["sounds"]);
-
-        //if (!options.GitInstalled)
-        //{
-        //    string gitFolder = Path.Combine(addon.ContentPath, ".git");
-
-        //    if (Directory.Exists(gitFolder))
-        //    {
-        //        try
-        //        {
-        //            Directory.Delete(gitFolder, true);
-        //            Logger?.LogDetail("Removed .git folder");
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            failureOccurred = true;
-        //            Logger?.LogError($".git folder could not be removed: {ex.Message}", LogSeverity.Low);
-        //        }
-        //    }
-        //    else
-        //    {
-        //        Logger?.LogDetail(".git folder not found");
-        //    }
-        //}
-
         SaveAddonConfig(addon, options);
         Logger?.LogDetail("Updating addon config...");
 
@@ -644,7 +568,6 @@ public class FileManager
             return;
         }
 
-        //UninstallAlyxLibOptions(addon, installedConfig);
         (_, int failedOperations, int successfulOperations) = UninstallAlyxLibOptions(manifest, addon, installedConfig);
 
         DeploymentResult result = manifest.DeployCategory("upload_removal");
