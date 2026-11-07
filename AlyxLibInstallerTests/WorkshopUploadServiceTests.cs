@@ -17,6 +17,7 @@ public class WorkshopUploadServiceTests
     private string? _packedControlFile;
     private int _connectCount;
     private bool _isLoading;
+    private readonly List<string> _openedUrls = [];
 
     [TestInitialize]
     public void Setup()
@@ -37,9 +38,9 @@ public class WorkshopUploadServiceTests
     [TestCleanup]
     public void Cleanup() => _fs.Dispose();
 
-    private WorkshopUploadService CreateService(Func<IWorkshopClient>? connect = null)
+    private WorkshopUploadService CreateService(Func<IWorkshopClient>? connect = null, VpkPacker? packer = null)
     {
-        var packer = new VpkPacker("vpk.exe", args =>
+        packer ??= new VpkPacker("vpk.exe", args =>
         {
             // Arguments are: k "<vpk>" "<control file>"
             var paths = args.Split('"');
@@ -54,11 +55,12 @@ public class WorkshopUploadServiceTests
             _store,
             packer,
             (loading, _) => _isLoading = loading,
-            logException: _ => { });
+            logException: _ => { },
+            openUrl: _openedUrls.Add);
     }
 
-    private Task<WorkshopUploadResult> Upload(Func<IWorkshopClient>? connect = null) =>
-        CreateService(connect).UploadAsync(new WorkshopUploadRequest(
+    private Task<WorkshopUploadResult> Upload(Func<IWorkshopClient>? connect = null, VpkPacker? packer = null) =>
+        CreateService(connect, packer).UploadAsync(new WorkshopUploadRequest(
             "resin_watch",
             _fs.PathOf("content"),
             _fs.PathOf("game"),
@@ -239,9 +241,67 @@ public class WorkshopUploadServiceTests
         Link();
         _client.Item = null;
 
-        Assert.AreEqual(WorkshopUploadResult.Failed, Upload().Result);
+        Assert.AreEqual(WorkshopUploadResult.Cancelled, Upload().Result);
         Assert.AreEqual("Workshop Item Not Found", _dialogs.Shown.Single().Config!.Title);
         Assert.IsTrue(_client.Disposed);
+        Assert.AreEqual(0, _client.Submitted.Count);
+    }
+
+    [TestMethod]
+    public void DeletedItemCanBeReplacedWithANewItem()
+    {
+        Link(properties => properties.Description = "Kept description");
+        _client.Item = null;
+        FillNewItem();
+        _dialogs.Respond(DialogResult.Secondary);
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
+
+        Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
+
+        Assert.AreEqual(1, _client.CreatedCount);
+        Assert.AreEqual(_client.CreatedItemId, _client.Submitted.Single().ItemId);
+        Assert.AreEqual(_client.CreatedItemId, WorkshopProperties.Load(_fs.PathOf("content"))!.ItemId);
+    }
+
+    [TestMethod]
+    public void DeletedItemCanBeRelinkedAndUploaded()
+    {
+        Link();
+        _store.Save(new PublishData(111, "Resin Watch (old)", "resin_watch", DateTimeOffset.Now));
+        _client.Item = null;
+        _dialogs.OnPopupShown = popup =>
+        {
+            var picker = (ChangeLinkedItemViewModel)popup;
+            // The missing item isn't offered again
+            Assert.IsNull(picker.SelectedItemId);
+            picker.Items.Single(item => item.ItemId == 111).IsSelected = true;
+            _client.Item = new WorkshopItemDetails(111, "Resin Watch", "Tracks resin", WorkshopVisibility.Public, ["Alyx Addon"], [WorkshopProperties.AlyxLibItemId], "", DateTimeOffset.Now);
+        };
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary, inputText: "Notes");
+
+        Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
+
+        Assert.AreEqual(111UL, _client.Submitted.Single().ItemId);
+        Assert.AreEqual(111UL, WorkshopProperties.Load(_fs.PathOf("content"))!.ItemId);
+        Assert.AreEqual(0, _client.CreatedCount);
+    }
+
+    [TestMethod]
+    public void MissingVpkToolStopsBeforeCreatingAnItem()
+    {
+        FillNewItem();
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
+
+        Assert.AreEqual(WorkshopUploadResult.Failed, Upload(packer: new VpkPacker(_fs.PathOf("missing/vpk.exe"))).Result);
+
+        Assert.AreEqual("Packing Failed", _dialogs.Shown.Last().Config!.Title);
+        StringAssert.Contains(_dialogs.Shown.Last().Config!.Message, "Workshop Tools");
+        Assert.AreEqual(0, _client.CreatedCount);
+        Assert.AreEqual(0, _connectCount);
     }
 
     [TestMethod]
@@ -403,6 +463,20 @@ public class WorkshopUploadServiceTests
 
         Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
         StringAssert.Contains(_dialogs.Shown.Last().Config!.Message, WorkshopUploadService.LegalAgreementUrl);
+        Assert.AreEqual(0, _openedUrls.Count);
+    }
+
+    [TestMethod]
+    public void LegalAgreementCanBeOpened()
+    {
+        Link();
+        _client.NeedsLegalAgreement = true;
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
+
+        Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
+        Assert.AreEqual("Open Agreement", _dialogs.Shown.Last().Config!.PrimaryButtonText);
+        CollectionAssert.AreEqual(new[] { WorkshopUploadService.LegalAgreementUrl }, _openedUrls);
     }
 }
 

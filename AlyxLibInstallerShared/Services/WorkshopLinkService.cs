@@ -76,11 +76,12 @@ public class WorkshopLinkService(IDialogService dialogService, WorkshopItemStore
     /// Lets the user link the addon to another of its published items, or any item by ID or link.
     /// The new item is checked on Steam before it's linked. Other saved properties are kept.
     /// </summary>
+    /// <param name="linkedItemExists">False if the linked item was found to be missing, so it isn't offered again.</param>
     /// <returns>True if the link changed.</returns>
-    public async Task<bool> ChangeLinkAsync(string addonName, string contentPath, Func<IWorkshopClient> connect, Action<bool, string> setLoading)
+    public async Task<bool> ChangeLinkAsync(string addonName, string contentPath, Func<IWorkshopClient> connect, Action<bool, string> setLoading, bool linkedItemExists = true)
     {
         var properties = WorkshopProperties.Load(contentPath);
-        var picker = new ChangeLinkedItemViewModel(store.GetItemsForAddon(addonName), properties?.HasItem == true ? properties.ItemId : null);
+        var picker = new ChangeLinkedItemViewModel(store.GetItemsForAddon(addonName), properties?.HasItem == true && linkedItemExists ? properties.ItemId : null);
 
         while (true)
         {
@@ -100,7 +101,7 @@ public class WorkshopLinkService(IDialogService dialogService, WorkshopItemStore
                 continue;
             }
 
-            if (itemId == properties?.ItemId)
+            if (itemId == properties?.ItemId && linkedItemExists)
                 return false;
 
             string? problem;

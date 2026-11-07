@@ -107,13 +107,25 @@ public class VpkPacker(string vpkExePath, Func<string, (int ExitCode, string Out
         excludedPaths.Any(excluded => FileUtils.PathsAreEqual(path, excluded) || FileUtils.IsInsideFolder(path, excluded));
 
     /// <summary>
+    /// Checks vpk.exe can be run, e.g. before creating a Workshop item that the pack is for.
+    /// </summary>
+    /// <exception cref="VpkPackException">vpk.exe isn't installed.</exception>
+    public void EnsureAvailable()
+    {
+        if (runVpk == null && !File.Exists(VpkExePath))
+            throw new VpkPackException($"vpk.exe wasn't found at {VpkExePath}. Make sure the Half-Life: Alyx Workshop Tools are installed.", "");
+    }
+
+    /// <summary>
     /// Packs the files into a new VPK, replacing any existing one.
     /// </summary>
-    /// <exception cref="VpkPackException">vpk.exe failed or didn't create the VPK.</exception>
+    /// <exception cref="VpkPackException">vpk.exe is missing, failed or didn't create the VPK.</exception>
     public void Pack(IReadOnlyList<PackFile> files, string vpkPath)
     {
         if (files.Count == 0)
             throw new VpkPackException("There are no files to pack.", "");
+
+        EnsureAvailable();
 
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(vpkPath))!);
 
@@ -157,9 +169,6 @@ public class VpkPacker(string vpkExePath, Func<string, (int ExitCode, string Out
 
     private (int ExitCode, string Output) RunVpk(string arguments)
     {
-        if (!File.Exists(VpkExePath))
-            throw new FileNotFoundException("vpk.exe not found. Make sure the Half-Life: Alyx Workshop Tools are installed.", VpkExePath);
-
         using var process = Process.Start(new ProcessStartInfo(VpkExePath, arguments)
         {
             UseShellExecute = false,

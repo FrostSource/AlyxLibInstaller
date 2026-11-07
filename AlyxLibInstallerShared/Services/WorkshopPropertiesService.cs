@@ -10,15 +10,18 @@ namespace AlyxLibInstallerShared.Services;
 /// </summary>
 /// <param name="connect">Opens a Workshop connection, which is closed as soon as it's no longer needed.</param>
 /// <param name="setLoading">Shows or hides the loading overlay with a status message.</param>
+/// <param name="openUrl">Opens a web page, e.g. the Workshop legal agreement.</param>
 public class WorkshopPropertiesService(
     IDialogService dialogService,
     Func<IWorkshopClient> connect,
     WorkshopItemStore store,
     Action<bool, string> setLoading,
     ILogger? logger = null,
-    Action<Exception>? logException = null)
+    Action<Exception>? logException = null,
+    Action<string>? openUrl = null)
 {
     private readonly Action<Exception> _logException = logException ?? FileLogger.Log;
+    private readonly Action<string> _openUrl = openUrl ?? Launcher.Launch;
     private readonly WorkshopLinkService _links = new(dialogService, store, logger);
 
     /// <returns>True if the properties were saved.</returns>
@@ -103,10 +106,7 @@ public class WorkshopPropertiesService(
 
             logger?.Log($"Updated Workshop item {updated.ItemId}", LogType.Success);
             if (result.NeedsLegalAgreement)
-            {
-                await dialogService.ShowWarningPopup("Workshop Legal Agreement",
-                    $"The changes were saved, but the item stays hidden until you accept the Steam Workshop legal agreement:\n{WorkshopUploadService.LegalAgreementUrl}");
-            }
+                await WorkshopUploadService.ShowLegalAgreementAsync(dialogService, _openUrl, "The changes were saved");
         }
         catch (WorkshopException ex)
         {

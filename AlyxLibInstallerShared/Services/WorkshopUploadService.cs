@@ -31,6 +31,7 @@ public enum WorkshopUploadResult
 /// </summary>
 /// <param name="connect">Opens a Workshop connection, which is closed when the upload ends.</param>
 /// <param name="setLoading">Shows or hides the loading overlay with a status message.</param>
+/// <param name="openUrl">Opens a web page, e.g. the Workshop legal agreement.</param>
 public class WorkshopUploadService(
     IDialogService dialogService,
     Func<IWorkshopClient> connect,
@@ -38,11 +39,13 @@ public class WorkshopUploadService(
     VpkPacker packer,
     Action<bool, string> setLoading,
     ILogger? logger = null,
-    Action<Exception>? logException = null)
+    Action<Exception>? logException = null,
+    Action<string>? openUrl = null)
 {
     public const string LegalAgreementUrl = "https://steamcommunity.com/sharedfiles/workshoplegalagreement";
 
     private readonly Action<Exception> _logException = logException ?? FileLogger.Log;
+    private readonly Action<string> _openUrl = openUrl ?? Launcher.Launch;
     private readonly WorkshopLinkService _links = new(dialogService, store, logger);
 
     /// <summary>
@@ -82,9 +85,9 @@ public class WorkshopUploadService(
 
             if (remote == null)
             {
-                await dialogService.ShowWarningPopup("Workshop Item Not Found",
-                    $"Workshop item {properties.ItemId} doesn't exist. It may have been deleted. Use Change Linked Item to link another.");
-                return WorkshopUploadResult.Failed;
+                // Linking another item or creating one needs its own connection
+                client.Dispose();
+                return await RelinkMissingItemAsync(request, properties);
             }
 
             var differences = WorkshopPropertyComparer.GetDifferences(properties, localDescription, remote);
@@ -130,13 +133,45 @@ public class WorkshopUploadService(
             logger?.Log($"Uploaded {request.AddonName} to Workshop item {properties.ItemId}: {WorkshopLinks.GetItemUrl(properties.ItemId)}", LogType.Success);
 
             if (result.NeedsLegalAgreement)
-                await ShowLegalAgreementAsync();
+                await ShowLegalAgreementAsync(dialogService, _openUrl, "The upload finished");
 
             return WorkshopUploadResult.Uploaded;
         }
         catch (Exception ex)
         {
             return await FailAsync(ex);
+        }
+    }
+
+    /// <summary>
+    /// Lets the user link another item or create a new one when the linked item no longer exists, then carries on uploading.
+    /// </summary>
+    private async Task<WorkshopUploadResult> RelinkMissingItemAsync(WorkshopUploadRequest request, WorkshopProperties properties)
+    {
+        var response = await dialogService.ShowWarningPopup(new DialogConfiguration
+        {
+            Title = "Workshop Item Not Found",
+            Message = $"Workshop item {properties.ItemId} doesn't exist. It may have been deleted.\n\n" +
+                "Link this addon to another item, or create a new item for it?",
+            PrimaryButtonText = "Change Linked Item",
+            SecondaryButtonText = "New Item",
+            CancelButtonText = "Cancel",
+            Width = 450
+        });
+
+        switch (response.Result)
+        {
+            case DialogResult.Primary:
+                return await _links.ChangeLinkAsync(request.AddonName, request.ContentPath, connect, setLoading, linkedItemExists: false)
+                    ? await UploadAsync(request)
+                    : WorkshopUploadResult.Cancelled;
+            case DialogResult.Secondary:
+                // The other properties carry over to the new item
+                properties.ItemId = 0;
+                return await CreateAndUploadAsync(request, properties);
+            default:
+                logger?.LogDetail("Upload cancelled");
+                return WorkshopUploadResult.Cancelled;
         }
     }
 
@@ -168,6 +203,9 @@ public class WorkshopUploadService(
                 return WorkshopUploadResult.Failed;
             }
 
+            // Checked now so a missing vpk.exe doesn't leave an empty item on the Workshop
+            packer.EnsureAvailable();
+
             var changeNote = await AskForChangeNotesAsync(properties.Title!, "Create and Upload");
             if (changeNote == null)
                 return WorkshopUploadResult.Cancelled;
@@ -197,7 +235,7 @@ public class WorkshopUploadService(
             logger?.Log($"Uploaded {request.AddonName} to new Workshop item {created.ItemId}: {WorkshopLinks.GetItemUrl(created.ItemId)}", LogType.Success);
 
             if (created.NeedsLegalAgreement || result.NeedsLegalAgreement)
-                await ShowLegalAgreementAsync();
+                await ShowLegalAgreementAsync(dialogService, _openUrl, "The upload finished");
 
             return WorkshopUploadResult.Uploaded;
         }
@@ -247,8 +285,24 @@ public class WorkshopUploadService(
         return result;
     }
 
-    private Task ShowLegalAgreementAsync() => dialogService.ShowWarningPopup("Workshop Legal Agreement",
-        $"The upload finished, but it stays hidden until you accept the Steam Workshop legal agreement:\n{LegalAgreementUrl}");
+    /// <summary>
+    /// Tells the user their item stays hidden until they accept the Workshop legal agreement, and offers to open it.
+    /// </summary>
+    /// <param name="whatFinished">What succeeded, e.g. "The upload finished".</param>
+    internal static async Task ShowLegalAgreementAsync(IDialogService dialogService, Action<string> openUrl, string whatFinished)
+    {
+        var response = await dialogService.ShowWarningPopup(new DialogConfiguration
+        {
+            Title = "Workshop Legal Agreement",
+            Message = $"{whatFinished}, but the item stays hidden from other players until you accept the Steam Workshop legal agreement.\n\n{LegalAgreementUrl}",
+            PrimaryButtonText = "Open Agreement",
+            CancelButtonText = "Later",
+            Width = 450
+        });
+
+        if (response.Result == DialogResult.Primary)
+            openUrl(LegalAgreementUrl);
+    }
 
     /// <param name="note">Added to the message shown to the user.</param>
     private async Task<WorkshopUploadResult> FailAsync(Exception ex, string note = "")
