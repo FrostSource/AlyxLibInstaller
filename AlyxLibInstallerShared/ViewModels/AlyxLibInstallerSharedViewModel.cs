@@ -1129,7 +1129,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 
         try
         {
-            await AlyxLibHelpers.DownloadRepository(Settings.GitHubUrl, downloadPath);
+            await AlyxLibHelpers.DownloadRepository(Settings.GitHubUrl, downloadPath, logger: _logger);
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {

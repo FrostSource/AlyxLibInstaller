@@ -59,7 +59,7 @@ public static class AlyxLibHelpers
         {
             foreach (SymlinkMap file in list)
                 if (!Path.Exists(Path.Combine(path, file.From)))
-                    missingPaths.Add(path);
+                    missingPaths.Add(file.From);
         }
 
         if (!Directory.Exists(path)) return false;
@@ -77,7 +77,7 @@ public static class AlyxLibHelpers
     {
         logger?.Log("Downloading AlyxLib repository from GitHub", LogType.Basic, LogSeverity.Low);
         var zipUrl = $"{githubUrl}/archive/refs/heads/main.zip";
-        var zipFilePath = Path.Combine(Path.GetTempPath(), "alyxlib_repo.zip");
+        var zipFilePath = Path.Combine(Path.GetTempPath(), $"alyxlib_repo_{Guid.NewGuid():N}.zip");
 
         // Seting up the http client used to download the data
         using (var client = new HttpClient())
@@ -98,15 +98,64 @@ public static class AlyxLibHelpers
 
             logger?.Log($"Downloaded to: {zipFilePath}", LogType.Basic, LogSeverity.Low);
 
-            ExtractWithoutTopLevelFolder(zipFilePath, extractPath);
+            try
+            {
+                var extractedFiles = ExtractWithoutTopLevelFolder(zipFilePath, extractPath);
+                RemoveFilesNoLongerInRepository(extractPath, extractedFiles, logger);
 
-            logger?.Log($"Extracted to: {extractPath}", LogType.Basic, LogSeverity.Low);
+                logger?.Log($"Extracted to: {extractPath}", LogType.Basic, LogSeverity.Low);
+            }
+            finally
+            {
+                // Delete temp zip
+                // Avoid possible bad directory error using this check
+                if (File.Exists(zipFilePath))
+                    File.Delete(zipFilePath);
+            }
+        }
+    }
+
+    /// <summary>
+    /// File in the AlyxLib folder listing the files extracted by the last download.
+    /// </summary>
+    public const string ExtractedFilesListName = ".installer_files.txt";
+
+    /// <summary>
+    /// Deletes files from the previous download that are no longer in the repository, so removed
+    /// scripts don't stay linked into addons. Only files listed by the previous download are touched,
+    /// so anything the user added to the folder is kept.
+    /// </summary>
+    internal static void RemoveFilesNoLongerInRepository(string extractPath, IReadOnlyCollection<string> extractedFiles, ILogger? logger)
+    {
+        var listPath = Path.Combine(extractPath, ExtractedFilesListName);
+
+        if (File.Exists(listPath))
+        {
+            var currentFiles = new HashSet<string>(extractedFiles, StringComparer.OrdinalIgnoreCase);
+            var extractRoot = Path.GetFullPath(extractPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+            foreach (var oldFile in File.ReadAllLines(listPath))
+            {
+                if (string.IsNullOrWhiteSpace(oldFile) || currentFiles.Contains(oldFile))
+                    continue;
+
+                var oldFilePath = Path.GetFullPath(Path.Combine(extractPath, oldFile));
+                if (!oldFilePath.StartsWith(extractRoot, StringComparison.OrdinalIgnoreCase) || !File.Exists(oldFilePath))
+                    continue;
+
+                try
+                {
+                    File.Delete(oldFilePath);
+                    logger?.Log($"Removed file no longer in AlyxLib: {oldFile}", LogType.Basic, LogSeverity.Low);
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogWarning($"Could not remove old AlyxLib file {oldFile}: {ex.Message}");
+                }
+            }
         }
 
-        // Delete temp zip
-        // Avoid possible bad directory error using this check
-        if (File.Exists(zipFilePath))
-            File.Delete(zipFilePath);
+        File.WriteAllLines(listPath, extractedFiles);
     }
 
     /// <summary>
@@ -131,8 +180,11 @@ public static class AlyxLibHelpers
     /// </summary>
     /// <param name="zipPath"></param>
     /// <param name="extractTo"></param>
-    static void ExtractWithoutTopLevelFolder(string zipPath, string extractTo)
+    /// <returns>Relative paths of the extracted files.</returns>
+    static List<string> ExtractWithoutTopLevelFolder(string zipPath, string extractTo)
     {
+        var extractedFiles = new List<string>();
+
         using ZipArchive archive = ZipFile.OpenRead(zipPath);
         foreach (ZipArchiveEntry entry in archive.Entries)
         {
@@ -152,7 +204,10 @@ public static class AlyxLibHelpers
 
             // Extract the file
             entry.ExtractToFile(targetPath, overwrite: true);
+            extractedFiles.Add(relativePath);
         }
+
+        return extractedFiles;
     }
 
     public static bool StringIsValidModName(string? input)
