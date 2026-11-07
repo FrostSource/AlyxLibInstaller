@@ -269,6 +269,7 @@ public class WorkshopUploadServiceTests
         FillNewItem();
         _dialogs.Respond(DialogResult.Secondary);
         _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
 
         Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
 
@@ -347,22 +348,18 @@ public class WorkshopUploadServiceTests
     public void NewItemIsCreatedAndUploadedWithEveryProperty()
     {
         FillNewItem();
-        var fill = _dialogs.OnPopupShown!;
-        string? uploadSummary = null;
-        _dialogs.OnPopupShown = popup =>
-        {
-            fill(popup);
-            uploadSummary = ((WorkshopPropertiesEditorViewModel)popup).UploadSummary;
-        };
+        _dialogs.Respond(DialogResult.Primary);
         _dialogs.Respond(DialogResult.Primary);
         _dialogs.Respond(DialogResult.Primary);
 
         Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
 
         Assert.AreEqual("New Item", _dialogs.Shown[0].Config!.PrimaryButtonText);
-        Assert.AreEqual("Create and Upload", _dialogs.Shown[1].Config!.PrimaryButtonText);
-        StringAssert.StartsWith(uploadSummary, "1 file,");
-        Assert.AreEqual(2, _dialogs.Shown.Count, "There are no change notes to ask for");
+        Assert.AreEqual("Continue", _dialogs.Shown[1].Config!.PrimaryButtonText);
+        var notes = _dialogs.Shown[2].Config!;
+        Assert.AreEqual("Create and Upload", notes.PrimaryButtonText);
+        Assert.AreEqual("Created Resin Watch.", notes.TextBoxDefaultText);
+        StringAssert.StartsWith(notes.Message, "Uploading 1 file,");
         Assert.AreEqual(1, _client.CreatedCount);
         var update = _client.Submitted.Single();
         Assert.AreEqual(_client.CreatedItemId, update.ItemId);
@@ -389,6 +386,7 @@ public class WorkshopUploadServiceTests
         _store.Save(new PublishData(ItemId, "Resin Watch", "resin_watch", DateTimeOffset.Now));
         FillNewItem();
         _dialogs.Respond(DialogResult.Secondary);
+        _dialogs.Respond(DialogResult.Primary);
         _dialogs.Respond(DialogResult.Primary);
 
         Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
@@ -428,10 +426,54 @@ public class WorkshopUploadServiceTests
     }
 
     [TestMethod]
+    public void CancellingNewItemChangeNotesKeepsItsProperties()
+    {
+        FillNewItem();
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.None);
+
+        Assert.AreEqual(WorkshopUploadResult.Cancelled, Upload().Result);
+
+        Assert.AreEqual(0, _connectCount);
+        var saved = WorkshopProperties.Load(_fs.PathOf("content"))!;
+        Assert.IsFalse(saved.HasItem);
+        Assert.AreEqual("Resin Watch", saved.Title);
+    }
+
+    [TestMethod]
+    public void EditedFirstChangeNoteIsUsed()
+    {
+        FillNewItem();
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary, inputText: " First release ");
+
+        Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
+
+        Assert.AreEqual("First release", _client.Submitted.Single().ChangeNote);
+    }
+
+    [TestMethod]
+    public void PreviewUnder1MBIsUploadedAsItIs()
+    {
+        FillNewItem();
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
+
+        Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
+
+        Assert.AreEqual(0, _converter.Converted.Count);
+        Assert.AreEqual(Path.GetFullPath(_fs.PathOf("content/preview.png")), _client.Submitted.Single().PreviewFile);
+    }
+
+    [TestMethod]
     public void LargePreviewIsConvertedBeforeCreatingTheItem()
     {
         FillNewItem();
         _dialogs.PickFileResult = _fs.WriteFile("content/preview.bmp", "bitmap");
+        _dialogs.Respond(DialogResult.Primary);
         _dialogs.Respond(DialogResult.Primary);
         _dialogs.Respond(DialogResult.Primary);
 
@@ -450,11 +492,14 @@ public class WorkshopUploadServiceTests
         _dialogs.Respond(DialogResult.Primary);
         _dialogs.Respond(DialogResult.Primary);
         _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
 
         Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
 
         var renamed = $"{_client.CreatedItemId}.lua";
-        Assert.AreEqual("Rename Workshop Init Script", _dialogs.Shown[2].Config!.Title);
+        // Offered once the item exists, since the new name is its ID
+        Assert.AreEqual("Rename Workshop Init Script", _dialogs.Shown[3].Config!.Title);
+        Assert.AreEqual(1, _client.CreatedCount);
         Assert.IsFalse(File.Exists(contentInit));
         Assert.IsTrue(File.Exists(Path.Combine(Path.GetDirectoryName(contentInit)!, renamed)));
         Assert.IsTrue(File.Exists(Path.Combine(Path.GetDirectoryName(gameInit)!, renamed)));
@@ -507,6 +552,7 @@ public class WorkshopUploadServiceTests
     {
         FillNewItem();
         _client.SubmitError = new WorkshopException("Lost connection to Steam.");
+        _dialogs.Respond(DialogResult.Primary);
         _dialogs.Respond(DialogResult.Primary);
         _dialogs.Respond(DialogResult.Primary);
 

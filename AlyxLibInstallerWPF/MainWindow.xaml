@@ -69,13 +69,26 @@
             <Setter Property="IsHitTestVisible" Value="False" />
         </Style>
 
-        <!-- Green accent for Upload, so it stands apart from the blue Install button. The brushes are set where it's used -->
-        <Style x:Key="GreenSplitButtonMainStyle" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
+        <!-- Green accent for Upload, so it stands apart from the blue Install button -->
+        <Style x:Key="GreenAccentButtonStyle" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
+            <Style.Resources>
+                <SolidColorBrush x:Key="AccentButtonBackground" Color="#1F8A3B" />
+                <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#25A046" />
+                <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#197231" />
+                <SolidColorBrush x:Key="AccentButtonBorderBrush" Color="#1A7A33" />
+                <SolidColorBrush x:Key="AccentButtonBorderBrushPointerOver" Color="#1F8A3B" />
+                <SolidColorBrush x:Key="AccentButtonBorderBrushPressed" Color="#197231" />
+                <SolidColorBrush x:Key="AccentButtonForeground" Color="White" />
+                <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="White" />
+                <SolidColorBrush x:Key="AccentButtonForegroundPressed" Color="#D8FFFFFF" />
+            </Style.Resources>
+        </Style>
+        <Style x:Key="GreenSplitButtonMainStyle" TargetType="Button" BasedOn="{StaticResource GreenAccentButtonStyle}">
             <Setter Property="Border.CornerRadius" Value="4,0,0,4" />
             <Setter Property="BorderThickness" Value="1,1,0,1" />
             <Setter Property="Padding" Value="12,4" />
         </Style>
-        <Style x:Key="GreenSplitButtonArrowStyle" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
+        <Style x:Key="GreenSplitButtonArrowStyle" TargetType="Button" BasedOn="{StaticResource GreenAccentButtonStyle}">
             <Setter Property="Border.CornerRadius" Value="0,4,4,0" />
             <Setter Property="BorderThickness" Value="0,1,1,1" />
             <Setter Property="Padding" Value="0" />
@@ -308,6 +321,7 @@
                                         Click="SplitButtonArrow_Click"
                                         ContextMenu="{StaticResource UninstallContextMenu}"
                                         Style="{StaticResource SplitButtonArrowStyle}"
+                                        IsEnabled="{Binding IsEnabled, ElementName=RemoveForUploadButton}"
                                         Height="{Binding ActualHeight, ElementName=RemoveForUploadButton}"
                                         >
 
@@ -332,17 +346,7 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
 
-                                <Grid.Resources>
-                                    <SolidColorBrush x:Key="AccentButtonBackground" Color="#1F8A3B" />
-                                    <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#25A046" />
-                                    <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#197231" />
-                                    <SolidColorBrush x:Key="AccentButtonBorderBrush" Color="#1A7A33" />
-                                    <SolidColorBrush x:Key="AccentButtonBorderBrushPointerOver" Color="#1F8A3B" />
-                                    <SolidColorBrush x:Key="AccentButtonBorderBrushPressed" Color="#197231" />
-                                    <SolidColorBrush x:Key="AccentButtonForeground" Color="White" />
-                                    <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="White" />
-                                    <SolidColorBrush x:Key="AccentButtonForegroundPressed" Color="#D8FFFFFF" />
-                                </Grid.Resources>
+
 
                                 <Button Grid.Column="0" Grid.Row="0"
                                         x:Name="UploadButton"
@@ -356,6 +360,7 @@
                                         Click="SplitButtonArrow_Click"
                                         ContextMenu="{StaticResource UploadContextMenu}"
                                         Style="{StaticResource GreenSplitButtonArrowStyle}"
+                                        IsEnabled="{Binding IsEnabled, ElementName=UploadButton}"
                                         Height="{Binding ActualHeight, ElementName=UploadButton}"
                                         >
                                     <Path Data="M 0,0 L 5,5 L 10,0"

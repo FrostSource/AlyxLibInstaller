@@ -194,7 +194,7 @@ public class WorkshopPropertiesEditorTests
         Assert.IsTrue(editor.PreviewChanged);
         Assert.AreEqual("preview.png", editor.PreviewFile);
         Assert.IsNull(editor.Validate());
-        StringAssert.Contains(editor.PreviewInfo, "Shrunk");
+        StringAssert.Contains(editor.PreviewInfo, "compressed to a JPEG");
     }
 
     [TestMethod]

@@ -34,7 +34,11 @@ internal class FakeDialogService : IDialogService
     private Task<DialogResponse> Show(string method, DialogConfiguration? config = null)
     {
         Shown.Add((method, config));
-        return Task.FromResult(_responses.Count > 0 ? _responses.Dequeue() : new DialogResponse(DialogResult.None));
+        var response = _responses.Count > 0 ? _responses.Dequeue() : new DialogResponse(DialogResult.None);
+        // Like the real dialog, an untouched text box returns the text it started with
+        if (config?.HasTextBox == true && response.InputText == null)
+            response = response with { InputText = config.TextBoxDefaultText ?? "" };
+        return Task.FromResult(response);
     }
 
     public Task<DialogResponse> ShowIntroAlyxLibPopup() => Show(nameof(ShowIntroAlyxLibPopup));

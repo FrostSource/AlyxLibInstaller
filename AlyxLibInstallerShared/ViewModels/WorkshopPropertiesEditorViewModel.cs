@@ -190,16 +190,15 @@ public partial class WorkshopPropertiesEditorViewModel : ObservableObject
             var preview = new FileInfo(WorkshopProperties.ResolvePath(_contentPath, PreviewFile));
             if (!preview.Exists)
                 return $"{preview.Name} wasn't found";
-            var info = $"{preview.Name}, {Utils.FormatFileSize(preview.Length)}";
-            return PreviewImages.NeedsConverting(preview.FullName) ? $"{info}. Shrunk to fit 1 MB when uploaded." : info;
+            var info = $"{preview.Name}, {Utils.FormatFileSize(preview.Length)}.";
+            if (preview.Length > PreviewImages.MaxBytes)
+                return $"{info} It's over 1 MB, so it's compressed to a JPEG when uploaded.";
+            if (PreviewImages.NeedsConverting(preview.FullName))
+                return $"{info} Steam doesn't take this format, so it's converted to a JPEG when uploaded.";
+            return $"{info} Uploaded as it is.";
         }
     }
 
-    /// <summary>
-    /// What will be uploaded, e.g. "120 files, 3.4 MB", or null when the editor isn't part of an upload.
-    /// </summary>
-    [ObservableProperty]
-    public partial string? UploadSummary { get; set; }
 
     /// <summary>
     /// The preview was changed in this editor, so it's uploaded when saving.

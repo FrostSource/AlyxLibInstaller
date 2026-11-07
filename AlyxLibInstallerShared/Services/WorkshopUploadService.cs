@@ -199,20 +199,23 @@ public class WorkshopUploadService(
             // Checked now so a missing vpk.exe doesn't leave an empty item on the Workshop
             packer.EnsureAvailable();
 
-            var editor = new WorkshopPropertiesEditorViewModel(properties, request.ContentPath, null, null, dialogService)
-            {
-                UploadSummary = DescribeFiles(files)
-            };
-            if (!await WorkshopPropertiesService.ShowEditorAsync(dialogService, editor, "New Workshop Item", "Create and Upload"))
+            var editor = new WorkshopPropertiesEditorViewModel(properties, request.ContentPath, null, null, dialogService);
+            if (!await WorkshopPropertiesService.ShowEditorAsync(dialogService, editor, "New Workshop Item", "Continue"))
             {
                 logger?.LogDetail("Upload cancelled");
                 return WorkshopUploadResult.Cancelled;
             }
 
-            // Saved now so they don't need entering again if the upload fails
+            // Saved now so they don't need entering again if the upload is cancelled or fails
             properties = editor.Build();
             properties.Save(request.ContentPath);
             var description = editor.CurrentDescription;
+
+            // Starts with the Workshop tools' note for a new item
+            var changeNote = await AskForChangeNotesAsync(properties.Title!, "Create and Upload", files, $"Created {properties.Title}.");
+            if (changeNote == null)
+                return WorkshopUploadResult.Cancelled;
+
             var preview = PreviewImages.PrepareForUpload(WorkshopProperties.ResolvePath(request.ContentPath, properties.PreviewFile!), previewConverter);
 
             setLoading(true, "Connecting to Steam...");
@@ -236,8 +239,7 @@ public class WorkshopUploadService(
             var update = new WorkshopItemUpdate(created.ItemId)
             {
                 ContentFolder = store.GetItemFolder(created.ItemId),
-                // The Workshop tools' note for a new item
-                ChangeNote = $"Created {properties.Title}.",
+                ChangeNote = changeNote,
                 PreviewFile = preview
             }.WithAllProperties(properties, description);
 
@@ -258,8 +260,9 @@ public class WorkshopUploadService(
         }
     }
 
+    /// <param name="defaultNote">Text the change notes start with.</param>
     /// <returns>The trimmed change notes, "" if there are none, or null if the user cancelled.</returns>
-    private async Task<string?> AskForChangeNotesAsync(string title, string uploadText, IReadOnlyList<PackFile> files)
+    private async Task<string?> AskForChangeNotesAsync(string title, string uploadText, IReadOnlyList<PackFile> files, string? defaultNote = null)
     {
         var response = await dialogService.ShowTextPopup(new DialogConfiguration
         {
@@ -268,6 +271,7 @@ public class WorkshopUploadService(
             HasTextBox = true,
             TextBoxIsMultiline = true,
             TextBoxPlaceholderText = "Change notes (optional)",
+            TextBoxDefaultText = defaultNote,
             PrimaryButtonText = uploadText,
             CancelButtonText = "Cancel",
             Width = 450

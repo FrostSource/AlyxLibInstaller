@@ -112,7 +112,7 @@
                     <TextBlock Style="{StaticResource Note}" Margin="0,6,0,0" Text="{Binding PreviewInfo}"
                                Visibility="{Binding PreviewInfo, Converter={StaticResource StringToVisibilityConverter}}" />
                     <TextBlock Style="{StaticResource Note}" Margin="0,6,0,0"
-                               Text="Images over 1 MB are shrunk to fit."
+                               Text="Images over 1 MB are compressed to fit when uploaded."
                                Visibility="{Binding PreviewInfo, Converter={StaticResource InvertStringToVisibilityConverter}}" />
                     <TextBlock Style="{StaticResource Note}" Margin="0,2,0,0" Text="Uploaded to the Workshop when you save."
                                Visibility="{Binding ShowsPreviewSaveNote, Converter={StaticResource BoolToVisibilityConverter}}" />
@@ -239,10 +239,6 @@
                 </StackPanel>
             </Grid>
 
-            <TextBlock Style="{StaticResource Note}" Margin="0,16,0,0"
-                       Visibility="{Binding UploadSummary, Converter={StaticResource StringToVisibilityConverter}}">
-                <Run Text="Uploads" /> <Run Text="{Binding UploadSummary, Mode=OneWay}" /><Run Text=", with the change note &quot;Created" /> <Run Text="{Binding Title, Mode=OneWay}" /><Run Text=".&quot; like the Workshop tools."  />
-            </TextBlock>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
