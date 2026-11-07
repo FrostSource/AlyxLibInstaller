@@ -1028,6 +1028,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
         _logger?.LogInfo($"Removing {desc} ...");
 
         AlyxLibInstance.FileManager.UninstallAlyxLibOptions(SelectedAddon, AddonConfig.GetConfig());
+        ReloadAddonConfig();
     }
 
     [RelayCommand]
