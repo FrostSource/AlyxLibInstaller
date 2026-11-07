@@ -397,6 +397,21 @@ public class FileManager
         failedOperations += result.FailedOperations;
         successfulOperations += result.SuccessfulOperations;
 
+        // The Workshop Tools pack symlinks like normal folders, so a link left behind would upload all of AlyxLib inside the addon
+        var remainingLinks = manifest.Categories["vscript"]
+            .Where(operation => operation.Remove == true && operation.DeployedFileExists())
+            .Select(operation => operation.GetDeploymentPath())
+            .ToList();
+
+        if (remainingLinks.Count > 0)
+        {
+            foreach (var link in remainingLinks)
+                Logger?.LogError($"Could not remove {addon.GetContentFileRelativePath(link)}");
+
+            Logger?.LogError("Stopped removing files for upload. AlyxLib is still linked in this addon and would be uploaded with it. Remove the files above manually, then try again.");
+            return;
+        }
+
         if (!manifest.TryDeployCategory("upload_removal", out result))
         {
             Logger?.LogError($"Upload removal encountered errors.");
