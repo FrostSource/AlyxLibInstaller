@@ -45,7 +45,7 @@ public partial class App : Application
         };
     }
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         var main = new MainWindow()
         {
@@ -80,24 +80,14 @@ public partial class App : Application
         //    WindowStartupLocation = WindowStartupLocation.CenterScreen
         //};
 
-        ///TODO: Decide if cmd line addon should be parsed into viewmodel on init so it overrides settings LastAddon
-        // NEW: Check for command-line arguments
+        // Check for command-line arguments
         string[] cmdArgs = Environment.GetCommandLineArgs();
-        // Expecting: [0]=exe path, [1]=addon path (optional)
+        // Expecting: [0]=exe path, [1]=addon path (optional), selected during initialization so it overrides LastAddon
         if (cmdArgs.Length > 1)
-        {
-            string addonPath = cmdArgs[1];
-            // Try to extract addon name from path (assuming folder name is addon name)
-            string addonName = System.IO.Path.GetFileName(addonPath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
-            if (!string.IsNullOrEmpty(addonName))
-            {
-                vm.SelectAddon(addonName);
-            }
-        }
+            vm.StartupAddonPath = cmdArgs[1];
 
         main.Show();
-        vm.InitializeAsync();
-        vm.IsInitializing = false;
+        await vm.InitializeAsync();
 
 
         //MainWindow.WindowStartupLocation = WindowStartupLocation.CenterScreen;

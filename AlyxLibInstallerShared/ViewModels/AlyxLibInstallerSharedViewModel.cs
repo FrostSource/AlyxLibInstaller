@@ -274,6 +274,19 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 
     public async void SelectAddon(LocalAddon addon)
     {
+        try
+        {
+            await SelectAddonAsync(addon);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError($"Failed to select addon {addon?.Name}.");
+            LogException(ex);
+        }
+    }
+
+    private async Task SelectAddonAsync(LocalAddon addon)
+    {
         if (addon == null) return;
 
         // update selected state so menu item can't get unchecked
@@ -499,9 +512,50 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
         _logger?.Log($"AlyxLib path set to '{folder}'", LogType.Success);
     }
 
+    /// <summary>
+    /// Path of an addon, or any folder inside one, to select on startup. Set when opened from the Explorer context menu.
+    /// </summary>
+    public string? StartupAddonPath { get; set; }
+
+    /// <summary>
+    /// Gets the addon name from a path to an addon folder or any folder inside it,
+    /// e.g. "...\content\hlvr_addons\my_addon\scripts\vscripts" gives "my_addon".
+    /// </summary>
+    public static string? GetAddonNameFromPath(string path)
+    {
+        var parts = Path.GetFullPath(path).Split(
+            [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries);
+
+        var addonsIndex = Array.FindLastIndex(parts, part => part.Equals("hlvr_addons", StringComparison.OrdinalIgnoreCase));
+        if (addonsIndex >= 0)
+            return addonsIndex + 1 < parts.Length ? parts[addonsIndex + 1] : null;
+
+        // Not inside an addons folder, assume the folder itself is the addon
+        return parts.Length > 0 ? parts[^1] : null;
+    }
+
     void InitializeAddons()
     {
-        _addonsFolderMonitor = new FileSystemWatcher(HLA.GetAddonContentFolder())
+        string addonsFolder;
+        try
+        {
+            addonsFolder = HLA.GetAddonContentFolder();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError("Could not find the Half-Life: Alyx install folder.");
+            LogException(ex, true);
+            return;
+        }
+
+        // The content folder only exists once the Workshop Tools DLC is installed
+        if (!Directory.Exists(addonsFolder))
+        {
+            _logger?.LogWarning($"Addon content folder not found: {addonsFolder}. Make sure the Half-Life: Alyx Workshop Tools are installed.");
+            return;
+        }
+
+        _addonsFolderMonitor = new FileSystemWatcher(addonsFolder)
         {
             NotifyFilter = NotifyFilters.DirectoryName,
             EnableRaisingEvents = true
@@ -511,6 +565,19 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
         _addonsFolderMonitor.Deleted += (_, _) => RefreshAddons();
 
         RefreshAddons();
+
+        // An addon passed on the command line takes priority over the last used addon
+        if (!string.IsNullOrEmpty(StartupAddonPath))
+        {
+            var startupAddonName = GetAddonNameFromPath(StartupAddonPath);
+            if (startupAddonName != null && HLA.TryGetAddon(startupAddonName, out LocalAddon startupAddon))
+            {
+                SelectAddon(startupAddon);
+                return;
+            }
+
+            _logger?.LogWarning($"Could not find an addon for '{StartupAddonPath}'");
+        }
 
         if (Settings.RememberLastAddon)
         {
@@ -598,10 +665,28 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
     [ObservableProperty]
     public partial bool IsInitializing { get; set; } = true;
 
-    public async void InitializeAsync()
+    public async Task InitializeAsync()
     {
         IsInitializing = true;
 
+        try
+        {
+            await InitializeCoreAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError("Startup did not complete.");
+            LogException(ex);
+        }
+        finally
+        {
+            // Normally already false, this makes sure the UI isn't left hidden if startup fails early
+            IsInitializing = false;
+        }
+    }
+
+    private async Task InitializeCoreAsync()
+    {
         InitializeThemes();
 
         SettingsManager.Save();
@@ -636,6 +721,9 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
         }
 
         InitializeAddons();
+
+        // Show the main UI before any startup dialogs so it isn't blank behind them
+        IsInitializing = false;
 
         if (string.IsNullOrEmpty(Settings.AlyxLibDirectory) || !TrySetAlyxLibPath(Settings.AlyxLibDirectory))
         {
@@ -705,8 +793,6 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             }
         SkipUpdateCheck:;
         }
-
-        IsInitializing = false;
     }
 
     [RelayCommand]
