@@ -1,56 +1,10 @@
 ﻿using FileDeployment.Operations;
-using FileDeploymentTests;
-using System.Runtime.Versioning;
 
 namespace FileDeployment.Tests;
 
 [TestClass()]
 public class DeploymentManifestTests
-{
-    //    private const string SampleJson = @"
-    //{
-    //    ""DefaultRules"": [
-    //        {
-    //            ""Type"": ""Hash"",
-    //            ""Value"": ""12345""
-    //        },
-    //        {
-    //            ""Type"": ""FileExists""
-    //        }
-    //    ],
-
-    //    ""categories"": {
-    //        ""panorama"": [
-    //            {
-    //                ""type"": ""copy"",
-    //                ""source"": ""{AlyxLib}/panorama/scripts/custom_game/panorama_lua.js"",
-    //                ""destination"": ""{AddonContent}/panorama/scripts/custom_game/panorama_lua.js"",
-    //                ""rules"": [
-    //                    {
-    //                        ""Type"": ""Hash"",
-    //                        ""value"": ""12345""
-    //                    },
-    //                    {
-    //                        ""Type"": ""FileExists""
-    //                    }
-    //                ]
-    //            },
-    //            {
-    //                ""type"": ""delete"",
-    //                ""source"": ""{AlyxLib}/panorama/scripts/custom_game/panoramadoc.js"",
-    //                ""rules"": ""FileNotExists""
-    //            },
-    //            {
-    //                ""type"": ""template"",
-    //                ""source"": ""template_file.txt"",
-    //                ""destination"": ""destination.lua"",
-    //                ""replacements"": ""{AddonFolderName}""
-    //            }
-    //        ]
-    //    }
-    //}";
-
-    private const string SampleJson = @"
+{    private const string SampleJson = @"
     {
 
       ""Categories"": {
@@ -190,162 +144,105 @@ public class DeploymentManifestTests
     }
     ";
 
-    // These 2 rules were removed because ReplaceExistingFiles is false for AlyxLib so they won't be overwritten
-    //""rules"": [
-    //    {
-    //    ""type"": ""FileDoesNotExist"",
-    //    ""target"": ""destination"",
-    //    ""description"": ""Addon soundevents file already exists, so it will not be replaced""
-    //    }
-    //]
+    private string _root = null!;
 
-    //""rules"": [
-    //    {
-    //    ""type"": ""FileDoesNotExist"",
-    //    ""target"": ""destination"",
-    //    ""description"": ""Addon resource manifest file already exists, so it will not be replaced"",
-    //    }
-    //]
+    [TestInitialize]
+    public void Setup()
+    {
+        _root = Path.Combine(Path.GetTempPath(), "FileDeploymentTests_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_root);
+    }
 
-    //private const string SampleJson = @"
-    //{
+    [TestCleanup]
+    public void Cleanup()
+    {
+        if (Directory.Exists(_root))
+            Directory.Delete(_root, true);
+    }
 
-    //  ""Categories"": {
-
-    //    ""sounds"": [
-    //      {
-    //        ""type"": ""copy"",
-    //        ""source"": ""{AlyxLib}/templates/soundevents.txt"",
-    //        ""destination"": ""{AddonContent}/soundevents/{AddonFolderName}_soundevents.vsndevts""
-    //      }
-    //    ]
-
-    //  }
-    //}
-    //";
-
-    private static DeploymentManifest CreateTestManifest()
+    private DeploymentManifest CreateTempManifest()
     {
         var manifest = DeploymentManifest.LoadFromString(SampleJson);
 
-        manifest.AddVariable("AlyxLib", () => "C://AlyxLib");
-        manifest.AddVariable("AddonContent", () => "C://content/my_addon");
-        manifest.AddVariable("AddonGame", () => "C://game/my_addon");
+        manifest.AddVariable("AlyxLib", () => Path.Combine(_root, "alyxlib"));
+        manifest.AddVariable("AddonContent", () => Path.Combine(_root, "content"));
+        manifest.AddVariable("AddonGame", () => Path.Combine(_root, "game"));
         manifest.AddVariable("ModName", () => "MY_MOD");
         manifest.AddVariable("AddonFolderName", () => "my_addon");
 
         return manifest;
     }
 
-    private static void PrintManifest(DeploymentManifest manifest)
+    private void CreateAlyxLibFile(string relativePath, string content = "")
     {
-        Console.WriteLine($"Default Rules ({manifest.DefaultRules?.Count.ToString() ?? "null"}):");
-        if (manifest.DefaultRules != null)
-        {
-            foreach (var rule in manifest.DefaultRules)
-            {
-                Console.WriteLine($"  Class: {rule.GetType().Name}");
-                Console.WriteLine($"  Value: {(rule is IValidationRuleWithValue v ? v.Value ?? "N/A" : "N/A")}");
-                //Console.WriteLine($"  Type: {rule.Type}");
-                //Console.WriteLine($"  Value: {rule.Value ?? "N/A"}");
-            }
-        }
-        else
-        {
-            Console.WriteLine("  N/A");
-        }
-
-        Console.WriteLine();
-
-        Console.WriteLine($"Categories ({manifest.Categories.Count}):\n");
-        foreach (var category in manifest.Categories)
-        {
-            Console.WriteLine($"  {category.Key} ({category.Value.Count}):");
-            foreach (var operation in category.Value)
-            {
-                //var OP = operation;
-                //var tst = operation.Destination;
-                //var jjj = $"{operation.Destination ?? "lol"}";
-                //Console.WriteLine($"    BLEBLE: {operation.Destination ?? "N/A"}");
-                Console.WriteLine($"    Class: {operation.GetType().Name}");
-                //Console.WriteLine($"    Type: {operation.Type}");
-                Console.WriteLine($"    Source: {operation.Source ?? "N/A"}");
-                Console.WriteLine($"    Destination: {(operation is IFileOperationWithDestination d ? d.Destination ?? "N/A" : "N/A")}");
-                if (operation is TemplateFileOperation templateOperation)
-                {
-                    Console.WriteLine($"    Replacements ({templateOperation.Replacements?.Count ?? 0}):");
-                    if (templateOperation.Replacements != null)
-                    {
-                        foreach (var replacement in templateOperation.Replacements)
-                        {
-                            Console.WriteLine($"      {replacement}");
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine("      N/A");
-                    }
-                }
-                Console.WriteLine($"    Rules ({operation.Rules?.Count.ToString() ?? "null"}):");
-                if (operation.Rules != null)
-                {
-                    foreach (var rule in operation.Rules)
-                    {
-                        Console.WriteLine($"      Class: {rule.GetType().Name}");
-                        Console.WriteLine($"      Value: {(rule is IValidationRuleWithValue v ? v.Value ?? "N/A" : "N/A")}");
-                        //Console.WriteLine($"      Type: {rule.Type}");
-                        // Value only exists for IValidationRuleWithValue
-                        //Console.WriteLine($"      Value: {rule.Value ?? "N/A"}");
-                        Console.WriteLine($"      Target: {rule.Target.ToString() ?? "N/A"}");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("      N/A");
-                }
-                Console.WriteLine();
-            }
-        }
+        var path = Path.Combine(_root, "alyxlib", relativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, content);
     }
 
-    [TestMethod()]
-    public void ApplyDefaultChecksTest()
+    private static void AssertSampleCategories(DeploymentManifest manifest)
     {
+        CollectionAssert.AreEquivalent(new[] { "vscript", "editor-vscode", "panorama", "sounds" }, manifest.Categories.Keys.ToArray());
+        Assert.IsTrue(manifest.HasCategory("VSCRIPT"), "Category names should be case insensitive");
 
+        var template = manifest.Categories["sounds"].OfType<TemplateFileOperation>().Single();
+        Assert.AreEqual(1, template.Replacements.Count);
+
+        var symlinks = manifest.Categories["editor-vscode"].OfType<SymlinkFileOperation>().Count();
+        Assert.AreEqual(2, symlinks);
     }
 
     [TestMethod()]
     public void LoadFromStringTest()
     {
-
-    }
-
-    [SupportedOSPlatform("windows")]
-    [TestMethod()]
-    public void FakeDeploymentTest()
-    {
-
-
-        var manifest = DeploymentManifest.LoadFromString(SampleJson);
-        //manifest.Logger = new Logging.ConsoleLogger();
-        //manifest.AddVariable("AlyxLib", () => "C://AlyxLib");
-        //manifest.AddVariable("AddonContent", () => "C://content/my_addon");
-        //manifest.AddVariable("AddonGame", () => "C://game/my_addon");
-
-        manifest.ReplaceExistingSymlinks = true;
-        manifest.Logger = new AlyxLibFileDeploymentLogger();
-        manifest.AddVariable("AlyxLib", () => @"C:\AlyxLibInstallerTest\alyxlib");
-        manifest.AddVariable("AddonContent", () => @"C:\AlyxLibInstallerTest\content");
-        manifest.AddVariable("AddonGame", () => @"C:\AlyxLibInstallerTest\game");
-        manifest.AddVariable("ModName", () => "MY_MOD");
-        manifest.AddVariable("AddonFolderName", () => "my_addon");
-
-        manifest.DeployAllCategories();
+        AssertSampleCategories(DeploymentManifest.LoadFromString(SampleJson));
     }
 
     [TestMethod()]
     public void LoadFromFileTest()
     {
-        Assert.Fail();
+        var path = Path.Combine(_root, "manifest.json");
+        File.WriteAllText(path, SampleJson);
+
+        AssertSampleCategories(DeploymentManifest.LoadFromFile(path));
+    }
+
+    [TestMethod()]
+    public void DeployCategoryCopiesFilesTest()
+    {
+        CreateAlyxLibFile("panorama/scripts/custom_game/panorama_lua.js", "lua");
+        CreateAlyxLibFile("panorama/scripts/custom_game/panoramadoc.js", "doc");
+
+        var result = CreateTempManifest().DeployCategory("panorama");
+
+        Assert.AreEqual(2, result.SuccessfulOperations);
+        Assert.AreEqual(0, result.FailedOperations);
+
+        var destination = Path.Combine(_root, "content", "panorama", "scripts", "custom_game");
+        Assert.AreEqual("lua", File.ReadAllText(Path.Combine(destination, "panorama_lua.js")));
+        Assert.AreEqual("doc", File.ReadAllText(Path.Combine(destination, "panoramadoc.js")));
+    }
+
+    [TestMethod()]
+    public void DeployCategoryWithMissingSourceFailsTest()
+    {
+        var result = CreateTempManifest().DeployCategory("panorama");
+
+        Assert.AreEqual(0, result.SuccessfulOperations);
+        Assert.AreEqual(2, result.FailedOperations);
+        Assert.IsFalse(File.Exists(Path.Combine(_root, "content", "panorama", "scripts", "custom_game", "panorama_lua.js")));
+    }
+
+    [TestMethod()]
+    public void DeployTemplateReplacesValuesTest()
+    {
+        CreateAlyxLibFile("templates/soundevents.txt", "sounds");
+        CreateAlyxLibFile("templates/resource_manifest.txt", "manifest for {0}");
+
+        CreateTempManifest().DeployCategory("sounds");
+
+        var manifestFile = Path.Combine(_root, "content", "resourcemanifests", "my_addon_addon_resources.vrman");
+        Assert.AreEqual("manifest for my_addon", File.ReadAllText(manifestFile));
+        Assert.IsTrue(File.Exists(Path.Combine(_root, "content", "soundevents", "my_addon_soundevents.vsndevts")));
     }
 }
