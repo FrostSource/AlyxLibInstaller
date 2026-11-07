@@ -504,7 +504,7 @@ public class FileManager
             {
                 try
                 {
-                    Directory.Delete(gitFolder, true);
+                    GitHelper.DeleteGitFolder(gitFolder);
                     Logger?.LogDetail("Removed .git folder");
                 }
                 catch (Exception ex)
@@ -603,13 +603,14 @@ public class FileManager
         }
     }
 
-    public void UninstallAlyxLibFully(LocalAddon addon)
+    public void UninstallAlyxLibFully(LocalAddon addon, bool removeGitRepository = false)
     {
         var installedConfig = AlyxLibHelpers.GetAddonConfig(addon);
         installedConfig.VScriptInstalled = false;
         installedConfig.PanoramaInstalled = false;
         installedConfig.SoundEventInstalled = false;
-        installedConfig.GitInstalled = false;
+        // The repository holds the user's own history, so it's only deleted when explicitly asked for
+        installedConfig.GitInstalled = !removeGitRepository;
 
         if (!TryGetDeploymentManifest(addon, installedConfig, out var manifest, out var logger)) { return; }
 

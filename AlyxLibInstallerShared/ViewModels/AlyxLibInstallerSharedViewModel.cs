@@ -958,8 +958,8 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 
 
         // Warn user about removal of git repository
-        //if (AddonConfig.GitInstalled == false && Repository.IsValid(SelectedAddon.ContentPath))
-        if (AddonConfig.GitInstalled == false && GitHelper.FolderHasGitRepository(SelectedAddon.ContentPath))
+        // Only the addon's own .git folder is deleted, so a parent repository doesn't need a warning
+        if (AddonConfig.GitInstalled == false && GitHelper.FolderIsRepositoryRoot(SelectedAddon.ContentPath))
         {
             var response = await _dialogService.ShowTextPopup(new DialogConfiguration()
             {
@@ -970,11 +970,10 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
                 CancelButtonText = "No, go back"
             });
 
-            switch (response.Result)
+            if (response.Result != DialogResult.Primary)
             {
-                case DialogResult.Primary:
-                    _logger?.LogDetail("User cancelled Git removal");
-                    return;
+                _logger?.LogDetail("User cancelled Git removal");
+                return;
             }
         }
 
@@ -1000,24 +999,24 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             return;
         }
 
+        bool hasGitRepository = GitHelper.FolderIsRepositoryRoot(SelectedAddon.ContentPath);
+
         var response = await _dialogService.ShowTextPopup(new DialogConfiguration()
         {
             Title = "Delete all AlyxLib files?",
             Message = "Are you sure you would like to delete all AlyxLib files?",
             PrimaryButtonText = "Yes, delete them",
-            CancelButtonText = "No, go back"
+            CancelButtonText = "No, go back",
+            HasCheckBox = hasGitRepository,
+            CheckBoxText = "Also delete the Git repository (.git folder and its history)",
+            CheckBoxDefaultChecked = false
         });
 
         switch (response.Result)
         {
             case DialogResult.Primary:
-                //AlyxLibInstance.FileManager.UninstallAlyxLibOptions(SelectedAddon, new()
-                //{
-                //    ModFolderName = AddonConfig.ModFolderName,
-                //    Version = AddonConfig.Version,
-                //    EditorType = AddonConfig.EditorType
-                //});
-                AlyxLibInstance.FileManager.UninstallAlyxLibFully(SelectedAddon);
+                bool removeGitRepository = hasGitRepository && response.CheckboxChecked == true;
+                AlyxLibInstance.FileManager.UninstallAlyxLibFully(SelectedAddon, removeGitRepository);
                 ReloadAddonConfig();
                 break;
             default:
