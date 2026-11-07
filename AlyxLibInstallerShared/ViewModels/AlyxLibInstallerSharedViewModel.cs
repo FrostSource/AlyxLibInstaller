@@ -24,6 +24,17 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
     private FolderDeletionMonitor? _addonMonitor;
     private FileSystemWatcher? _addonGameFolderMonitor;
     private FileSystemWatcher? _addonsFolderMonitor;
+    private Timer? _fileRemovalCountTimer;
+
+    /// <summary>
+    /// Updates the file removal count once game folder changes settle, so a compile writing hundreds
+    /// of files doesn't rescan the whole folder for each one.
+    /// </summary>
+    private void QueueFileRemovalCountUpdate()
+    {
+        _fileRemovalCountTimer ??= new Timer(_ => OnPropertyChanged(nameof(FileRemovalCount)));
+        _fileRemovalCountTimer.Change(TimeSpan.FromMilliseconds(500), Timeout.InfiniteTimeSpan);
+    }
     private void Log(string message, LogType type = LogType.Basic, LogSeverity severity = LogSeverity.Normal) => _logger?.Log(message, type, severity);
     private void LogException(Exception ex, bool quiet = false)
     {
@@ -299,9 +310,9 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
                 NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName
             };
             // Automatically update the file removal count
-            _addonGameFolderMonitor.Created += (_, _) => OnPropertyChanged(nameof(FileRemovalCount));
-            _addonGameFolderMonitor.Deleted += (_, _) => OnPropertyChanged(nameof(FileRemovalCount));
-            _addonGameFolderMonitor.Renamed += (_, _) => OnPropertyChanged(nameof(FileRemovalCount));
+            _addonGameFolderMonitor.Created += (_, _) => QueueFileRemovalCountUpdate();
+            _addonGameFolderMonitor.Deleted += (_, _) => QueueFileRemovalCountUpdate();
+            _addonGameFolderMonitor.Renamed += (_, _) => QueueFileRemovalCountUpdate();
         }
 
         SelectedAddon = addon;
