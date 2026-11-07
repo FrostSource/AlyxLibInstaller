@@ -35,6 +35,19 @@ public record WorkshopItemUpdate(ulong ItemId)
     public IReadOnlyList<string>? Tags { get; init; }
     public IReadOnlyList<ulong>? RequiredItems { get; init; }
     public string? PreviewFile { get; init; }
+
+    /// <summary>
+    /// Adds the local values of the given properties to the update.
+    /// </summary>
+    /// <param name="description">The local description, already read from the linked file if there is one.</param>
+    public WorkshopItemUpdate WithProperties(WorkshopProperties properties, string? description, WorkshopFields fields) => this with
+    {
+        Title = fields.HasFlag(WorkshopFields.Title) ? properties.Title : Title,
+        Description = fields.HasFlag(WorkshopFields.Description) ? description : Description,
+        Visibility = fields.HasFlag(WorkshopFields.Visibility) ? properties.Visibility : Visibility,
+        Tags = fields.HasFlag(WorkshopFields.Tags) ? properties.Tags : Tags,
+        RequiredItems = fields.HasFlag(WorkshopFields.RequiredItems) ? properties.RequiredItems : RequiredItems
+    };
 }
 
 /// <param name="NeedsLegalAgreement">The update was saved, but stays hidden until the user accepts the Workshop legal agreement.</param>

@@ -3,6 +3,7 @@ using AlyxLibInstallerShared;
 using AlyxLibInstallerShared.Models;
 using AlyxLibInstallerShared.Services;
 using AlyxLibInstallerShared.Services.Dialog;
+using AlyxLibInstallerShared.ViewModels;
 using Source2HelperLibrary;
 using System.Runtime.CompilerServices;
 
@@ -19,6 +20,12 @@ internal class FakeDialogService : IDialogService
     public List<(string Method, DialogConfiguration? Config)> Shown { get; } = [];
 
     public string? PickFolderResult { get; set; }
+    public string? PickFileResult { get; set; }
+
+    /// <summary>
+    /// Runs while a popup with a view model is showing, standing in for the user's edits.
+    /// </summary>
+    public Action<object>? OnPopupShown { get; set; }
     public int PickFolderCount { get; private set; }
 
     public void Respond(DialogResult result, bool? checkboxChecked = null, string? inputText = null) =>
@@ -38,6 +45,18 @@ internal class FakeDialogService : IDialogService
     public Task<DialogResponse> ShowListPopup(DialogConfiguration config, IEnumerable<string> list) => Show(nameof(ShowListPopup), config);
     public Task<DialogResponse> ShowWarningPopup(DialogConfiguration config) => Show(nameof(ShowWarningPopup), config);
 
+    public Task<DialogResponse> ShowWorkshopPropertiesPopup(DialogConfiguration config, WorkshopPropertiesEditorViewModel editor)
+    {
+        OnPopupShown?.Invoke(editor);
+        return Show(nameof(ShowWorkshopPropertiesPopup), config);
+    }
+
+    public Task<DialogResponse> ShowChangeLinkedItemPopup(DialogConfiguration config, ChangeLinkedItemViewModel picker)
+    {
+        OnPopupShown?.Invoke(picker);
+        return Show(nameof(ShowChangeLinkedItemPopup), config);
+    }
+
     public string? PickFolder(string? title = null, string? initialPath = null)
     {
         PickFolderCount++;
@@ -45,6 +64,8 @@ internal class FakeDialogService : IDialogService
     }
 
     public Task<string?> PickFolderAsync(string? title = null, string? initialPath = null) => Task.FromResult(PickFolder(title, initialPath));
+
+    public string? PickFile(string? title = null, string? filter = null, string? initialPath = null) => PickFileResult;
 }
 
 /// <summary>

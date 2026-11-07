@@ -35,13 +35,48 @@ public partial class AlyxLibInstallerSharedViewModel
             SetLoading,
             _logger);
 
-        await uploadService.UploadAsync(new WorkshopUploadRequest(
+        var request = new WorkshopUploadRequest(
             SelectedAddon.Name,
             SelectedAddon.ContentPath,
             SelectedAddon.GamePath,
             AddonConfig.FileRemovalGlobs,
-            excludedPaths));
+            excludedPaths);
+
+        // After sorting out mismatched properties, the upload carries on with them
+        while (await uploadService.UploadAsync(request) == WorkshopUploadResult.OpenProperties)
+        {
+            if (!await CreatePropertiesService().EditAsync(SelectedAddon.Name, SelectedAddon.ContentPath))
+                return;
+        }
     }
+
+    [RelayCommand]
+    private async Task ShowWorkshopProperties()
+    {
+        if (SelectedAddon == null)
+        {
+            _logger?.LogError("No addon selected, cannot edit Workshop properties");
+            return;
+        }
+
+        await CreatePropertiesService().EditAsync(SelectedAddon.Name, SelectedAddon.ContentPath);
+    }
+
+    [RelayCommand]
+    private async Task ChangeLinkedWorkshopItem()
+    {
+        if (SelectedAddon == null)
+        {
+            _logger?.LogError("No addon selected, cannot change linked Workshop item");
+            return;
+        }
+
+        var links = new WorkshopLinkService(_dialogService, WorkshopItemStore.ForInstalledGame(), _logger);
+        await links.ChangeLinkAsync(SelectedAddon.Name, SelectedAddon.ContentPath, SteamWorkshopClient.Connect, SetLoading);
+    }
+
+    private WorkshopPropertiesService CreatePropertiesService() =>
+        new(_dialogService, SteamWorkshopClient.Connect, WorkshopItemStore.ForInstalledGame(), SetLoading, _logger);
 
     [RelayCommand]
     private void OpenWorkshopPage()
@@ -59,6 +94,6 @@ public partial class AlyxLibInstallerSharedViewModel
             return;
         }
 
-        Launcher.Launch(WorkshopUploadService.GetItemUrl(properties.ItemId));
+        Launcher.Launch(WorkshopLinks.GetItemUrl(properties.ItemId));
     }
 }

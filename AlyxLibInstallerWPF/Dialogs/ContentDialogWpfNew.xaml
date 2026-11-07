@@ -68,6 +68,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="{Binding PrimaryButtonText, Converter={StaticResource TextToGridLengthConverter}}"/>
                             <ColumnDefinition Width="{Binding SecondaryButtonText, Converter={StaticResource TextToGridLengthConverter}}"/>
+                            <ColumnDefinition Width="{Binding TertiaryButtonText, Converter={StaticResource TextToGridLengthConverter}}"/>
                             <ColumnDefinition Width="{Binding CancelButtonText, Converter={StaticResource TextToGridLengthConverter}}"/>
                         </Grid.ColumnDefinitions>
 
@@ -91,8 +92,17 @@
                                 Visibility="{Binding SecondaryButtonText, Converter={StaticResource StringToVisibilityConverter}}"
                                 MinWidth="80"
                                     />
-                        <Button x:Name="CloseButton"
+                        <Button x:Name="TertiaryButton"
                                 Grid.Column="2"
+                                HorizontalAlignment="Stretch"
+                                Margin="4,0,4,0"
+                                Tag="{x:Static local:ContentDialogResult.Tertiary}"
+                                Content="{Binding TertiaryButtonText}"
+                                Visibility="{Binding TertiaryButtonText, Converter={StaticResource StringToVisibilityConverter}}"
+                                MinWidth="80"
+                                    />
+                        <Button x:Name="CloseButton"
+                                Grid.Column="3"
                                 HorizontalAlignment="Stretch"
                                 Margin="4,0,0,0"
                                 Tag="{x:Static local:ContentDialogResult.None}"

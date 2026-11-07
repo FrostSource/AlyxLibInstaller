@@ -1,4 +1,5 @@
 ﻿using AlyxLibInstallerShared.Models;
+using AlyxLibInstallerShared.ViewModels;
 using Source2HelperLibrary;
 
 namespace AlyxLibInstallerShared.Services.Dialog;
@@ -11,6 +12,8 @@ public interface IDialogService : IFolderPickerService
     Task<DialogResponse> ShowAboutPopup(DialogConfiguration config, AboutInfo info);
     Task<DialogResponse> ShowListPopup(DialogConfiguration config, IEnumerable<string> list);
     Task<DialogResponse> ShowWarningPopup(DialogConfiguration config);
+    Task<DialogResponse> ShowWorkshopPropertiesPopup(DialogConfiguration config, WorkshopPropertiesEditorViewModel editor);
+    Task<DialogResponse> ShowChangeLinkedItemPopup(DialogConfiguration config, ChangeLinkedItemViewModel picker);
     Task<DialogResponse> ShowWarningPopup(string message) => ShowWarningPopup(new DialogConfiguration { Message = message });
     Task<DialogResponse> ShowWarningPopup(string title, string message) => ShowWarningPopup(new DialogConfiguration { Title = title, Message = message, IconType = DialogIconType.Warning });
 }

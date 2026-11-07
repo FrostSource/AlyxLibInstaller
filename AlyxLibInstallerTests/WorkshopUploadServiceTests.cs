@@ -56,7 +56,7 @@ public class WorkshopUploadServiceTests
             logException: _ => { });
     }
 
-    private Task<bool> Upload(Func<IWorkshopClient>? connect = null) =>
+    private Task<WorkshopUploadResult> Upload(Func<IWorkshopClient>? connect = null) =>
         CreateService(connect).UploadAsync(new WorkshopUploadRequest(
             "resin_watch",
             _fs.PathOf("content"),
@@ -77,7 +77,7 @@ public class WorkshopUploadServiceTests
         Link();
         _dialogs.Respond(DialogResult.Primary, inputText: "  Fixed the watch  ");
 
-        Assert.IsTrue(Upload().Result);
+        Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
 
         var update = _client.Submitted.Single();
         Assert.AreEqual(_store.GetItemFolder(ItemId), update.ContentFolder);
@@ -105,7 +105,7 @@ public class WorkshopUploadServiceTests
         Link();
         _dialogs.Respond(DialogResult.Primary, inputText: "  ");
 
-        Assert.IsTrue(Upload().Result);
+        Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
         Assert.IsNull(_client.Submitted.Single().ChangeNote);
     }
 
@@ -115,7 +115,7 @@ public class WorkshopUploadServiceTests
         Link();
         _dialogs.Respond(DialogResult.None);
 
-        Assert.IsFalse(Upload().Result);
+        Assert.AreEqual(WorkshopUploadResult.Cancelled, Upload().Result);
         Assert.AreEqual(0, _client.Submitted.Count);
         Assert.IsNull(_packedControlFile);
     }
@@ -123,7 +123,7 @@ public class WorkshopUploadServiceTests
     [TestMethod]
     public void UnlinkedAddonWithoutPublishedItemsDoesNotConnect()
     {
-        Assert.IsFalse(Upload().Result);
+        Assert.AreEqual(WorkshopUploadResult.Cancelled, Upload().Result);
 
         Assert.AreEqual(0, _connectCount);
         Assert.AreEqual("No Workshop Item", _dialogs.Shown.Single().Config!.Title);
@@ -137,7 +137,7 @@ public class WorkshopUploadServiceTests
         _dialogs.Respond(DialogResult.Primary);
         _dialogs.Respond(DialogResult.Primary, inputText: "Notes");
 
-        Assert.IsTrue(Upload().Result);
+        Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
 
         StringAssert.Contains(_dialogs.Shown[0].Config!.Message, "Old test (111)");
         Assert.AreEqual(ItemId, WorkshopProperties.Load(_fs.PathOf("content"))!.ItemId);
@@ -150,7 +150,7 @@ public class WorkshopUploadServiceTests
         _store.Save(new PublishData(ItemId, "Resin Watch", "resin_watch", DateTimeOffset.Now));
         _dialogs.Respond(DialogResult.None);
 
-        Assert.IsFalse(Upload().Result);
+        Assert.AreEqual(WorkshopUploadResult.Cancelled, Upload().Result);
         Assert.IsNull(WorkshopProperties.Load(_fs.PathOf("content")));
     }
 
@@ -161,7 +161,7 @@ public class WorkshopUploadServiceTests
         _dialogs.Respond(DialogResult.Primary);
         _dialogs.Respond(DialogResult.Primary, inputText: "Notes");
 
-        Assert.IsTrue(Upload().Result);
+        Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
 
         StringAssert.Contains(_dialogs.Shown[0].Config!.Message, "• Title");
         Assert.IsNull(_client.Submitted.Single().Title);
@@ -179,7 +179,7 @@ public class WorkshopUploadServiceTests
         _dialogs.Respond(DialogResult.Secondary);
         _dialogs.Respond(DialogResult.Primary, inputText: "Notes");
 
-        Assert.IsTrue(Upload().Result);
+        Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
 
         var update = _client.Submitted.Single();
         Assert.AreEqual("Local title", update.Title);
@@ -194,8 +194,20 @@ public class WorkshopUploadServiceTests
         Link(properties => properties.Visibility = WorkshopVisibility.Private);
         _dialogs.Respond(DialogResult.None);
 
-        Assert.IsFalse(Upload().Result);
+        Assert.AreEqual(WorkshopUploadResult.Cancelled, Upload().Result);
         Assert.AreEqual(0, _client.Submitted.Count);
+    }
+
+    [TestMethod]
+    public void MismatchOpenPropertiesStopsBeforePacking()
+    {
+        Link(properties => properties.Title = "Local title");
+        _dialogs.Respond(DialogResult.Tertiary);
+
+        Assert.AreEqual(WorkshopUploadResult.OpenProperties, Upload().Result);
+        Assert.AreEqual(0, _client.Submitted.Count);
+        Assert.IsNull(_packedControlFile);
+        Assert.AreEqual("Open Properties", _dialogs.Shown.Single().Config!.TertiaryButtonText);
     }
 
     [TestMethod]
@@ -206,7 +218,7 @@ public class WorkshopUploadServiceTests
         _dialogs.Respond(DialogResult.Secondary);
         _dialogs.Respond(DialogResult.Primary);
 
-        Assert.IsTrue(Upload().Result);
+        Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
         Assert.AreEqual("From the file", _client.Submitted.Single().Description);
     }
 
@@ -215,7 +227,7 @@ public class WorkshopUploadServiceTests
     {
         Link(properties => properties.DescriptionFile = "missing.txt");
 
-        Assert.IsFalse(Upload().Result);
+        Assert.AreEqual(WorkshopUploadResult.Failed, Upload().Result);
         Assert.AreEqual(0, _connectCount);
         Assert.AreEqual("Description File Missing", _dialogs.Shown.Single().Config!.Title);
     }
@@ -226,7 +238,7 @@ public class WorkshopUploadServiceTests
         Link();
         _client.Item = null;
 
-        Assert.IsFalse(Upload().Result);
+        Assert.AreEqual(WorkshopUploadResult.Failed, Upload().Result);
         Assert.AreEqual("Workshop Item Not Found", _dialogs.Shown.Single().Config!.Title);
         Assert.IsTrue(_client.Disposed);
     }
@@ -236,7 +248,7 @@ public class WorkshopUploadServiceTests
     {
         Link();
 
-        Assert.IsFalse(Upload(() => throw new WorkshopException("Steam isn't running")).Result);
+        Assert.AreEqual(WorkshopUploadResult.Failed, Upload(() => throw new WorkshopException("Steam isn't running")).Result);
 
         Assert.AreEqual("Steam isn't running", _dialogs.Shown.Single().Config!.Message);
         Assert.IsFalse(_isLoading);
@@ -249,7 +261,7 @@ public class WorkshopUploadServiceTests
         _client.NeedsLegalAgreement = true;
         _dialogs.Respond(DialogResult.Primary);
 
-        Assert.IsTrue(Upload().Result);
+        Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
         StringAssert.Contains(_dialogs.Shown.Last().Config!.Message, WorkshopUploadService.LegalAgreementUrl);
     }
 }

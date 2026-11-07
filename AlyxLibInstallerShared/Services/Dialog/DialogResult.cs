@@ -3,5 +3,6 @@ public enum DialogResult
 {
     Primary,
     Secondary,
+    Tertiary,
     None
 }

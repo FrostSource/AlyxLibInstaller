@@ -31,4 +31,17 @@ public class WpfFolderPickerService : IFolderPickerService
     {
         return Task.FromResult(PickFolder(title, initialPath));
     }
+
+    public string? PickFile(string? title = null, string? filter = null, string? initialPath = null)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = title ?? "Select file",
+            Filter = filter ?? string.Empty,
+            InitialDirectory = initialPath ?? string.Empty,
+        };
+
+        bool? result = _owner != null ? dialog.ShowDialog(_owner) : dialog.ShowDialog();
+        return result == true ? dialog.FileName : null;
+    }
 }

@@ -4,7 +4,8 @@ public enum ContentDialogResult
 {
     None,
     Primary,
-    Secondary
+    Secondary,
+    Tertiary
 }
 
 public class DialogResultWithData<T>

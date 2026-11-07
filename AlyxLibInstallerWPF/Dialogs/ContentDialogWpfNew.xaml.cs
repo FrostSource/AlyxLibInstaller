@@ -18,6 +18,7 @@ public partial class ContentDialogWpfNew : UserControl
 
         PrimaryButton.Click += (s, e) => Close(ContentDialogResult.Primary);
         SecondaryButton.Click += (s, e) => Close(ContentDialogResult.Secondary);
+        TertiaryButton.Click += (s, e) => Close(ContentDialogResult.Tertiary);
         CloseButton.Click += (s, e) => Close(ContentDialogResult.None);
     }
 

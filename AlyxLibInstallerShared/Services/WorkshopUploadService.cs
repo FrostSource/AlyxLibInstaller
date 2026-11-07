@@ -14,6 +14,17 @@ public record WorkshopUploadRequest(
     IReadOnlyList<string> RemovalGlobs,
     IReadOnlyList<string> ExcludedPaths);
 
+public enum WorkshopUploadResult
+{
+    Uploaded,
+    Cancelled,
+    Failed,
+    /// <summary>
+    /// The user chose to open Item Properties to sort out properties that don't match the Workshop.
+    /// </summary>
+    OpenProperties
+}
+
 /// <summary>
 /// Packs an addon and uploads it as an update to its linked Workshop item, without changing any files in the addon.
 /// </summary>
@@ -31,19 +42,17 @@ public class WorkshopUploadService(
     public const string LegalAgreementUrl = "https://steamcommunity.com/sharedfiles/workshoplegalagreement";
 
     private readonly Action<Exception> _logException = logException ?? FileLogger.Log;
-
-    public static string GetItemUrl(ulong itemId) => $"https://steamcommunity.com/sharedfiles/filedetails/?id={itemId}";
+    private readonly WorkshopLinkService _links = new(dialogService, store, logger);
 
     /// <summary>
     /// Uploads the addon to its linked Workshop item, asking for change notes first.
     /// If the item's properties on the Workshop don't match the local ones, the user chooses whether to update them too.
     /// </summary>
-    /// <returns>True if the upload finished.</returns>
-    public async Task<bool> UploadAsync(WorkshopUploadRequest request)
+    public async Task<WorkshopUploadResult> UploadAsync(WorkshopUploadRequest request)
     {
-        var properties = WorkshopProperties.Load(request.ContentPath) ?? await LinkPublishedItem(request);
+        var properties = await _links.LoadOrLinkAsync(request.AddonName, request.ContentPath);
         if (properties == null)
-            return false;
+            return WorkshopUploadResult.Cancelled;
 
         string? localDescription;
         try
@@ -54,7 +63,7 @@ public class WorkshopUploadService(
         {
             await dialogService.ShowWarningPopup("Description File Missing",
                 $"The linked description file couldn't be found:\n{ex.FileName}\n\nLink another file in Item Properties, or restore this one, then try again.");
-            return false;
+            return WorkshopUploadResult.Failed;
         }
 
         try
@@ -69,21 +78,25 @@ public class WorkshopUploadService(
             if (remote == null)
             {
                 await dialogService.ShowWarningPopup("Workshop Item Not Found",
-                    $"Workshop item {properties.ItemId} doesn't exist. It may have been deleted.");
-                return false;
+                    $"Workshop item {properties.ItemId} doesn't exist. It may have been deleted. Use Change Linked Item to link another.");
+                return WorkshopUploadResult.Failed;
             }
 
             var differences = WorkshopPropertyComparer.GetDifferences(properties, localDescription, remote);
             bool updateProperties = false;
             if (differences != WorkshopFields.None)
             {
-                var choice = await AskAboutMismatch(remote, differences);
-                if (choice == DialogResult.None)
+                switch (await AskAboutMismatch(remote, differences))
                 {
-                    logger?.LogDetail("Upload cancelled");
-                    return false;
+                    case DialogResult.Secondary:
+                        updateProperties = true;
+                        break;
+                    case DialogResult.Tertiary:
+                        return WorkshopUploadResult.OpenProperties;
+                    case DialogResult.None:
+                        logger?.LogDetail("Upload cancelled");
+                        return WorkshopUploadResult.Cancelled;
                 }
-                updateProperties = choice == DialogResult.Secondary;
             }
 
             var changeNotes = await dialogService.ShowTextPopup(new DialogConfiguration
@@ -100,7 +113,7 @@ public class WorkshopUploadService(
             if (changeNotes.Result != DialogResult.Primary)
             {
                 logger?.LogDetail("Upload cancelled");
-                return false;
+                return WorkshopUploadResult.Cancelled;
             }
 
             setLoading(true, "Packing addon...");
@@ -112,7 +125,7 @@ public class WorkshopUploadService(
                 ChangeNote = string.IsNullOrWhiteSpace(changeNotes.InputText) ? null : changeNotes.InputText.Trim()
             };
             if (updateProperties)
-                update = AddChangedProperties(update, properties, localDescription, differences);
+                update = update.WithProperties(properties, localDescription, differences);
 
             // Keeps publish_data.txt in step with the Workshop tools, which list items by it
             store.Save(new PublishData(properties.ItemId, update.Title ?? remote.Title, request.AddonName, DateTimeOffset.Now));
@@ -123,7 +136,7 @@ public class WorkshopUploadService(
             var result = await client.SubmitUpdateAsync(update, progress);
             setLoading(false, "");
 
-            logger?.Log($"Uploaded {request.AddonName} to Workshop item {properties.ItemId}: {GetItemUrl(properties.ItemId)}", LogType.Success);
+            logger?.Log($"Uploaded {request.AddonName} to Workshop item {properties.ItemId}: {WorkshopLinks.GetItemUrl(properties.ItemId)}", LogType.Success);
 
             if (result.NeedsLegalAgreement)
             {
@@ -131,28 +144,28 @@ public class WorkshopUploadService(
                     $"The upload finished, but it stays hidden until you accept the Steam Workshop legal agreement:\n{LegalAgreementUrl}");
             }
 
-            return true;
+            return WorkshopUploadResult.Uploaded;
         }
         catch (WorkshopException ex)
         {
             setLoading(false, "");
             logger?.LogError(ex.Message);
             await dialogService.ShowWarningPopup("Upload Failed", ex.Message);
-            return false;
+            return WorkshopUploadResult.Failed;
         }
         catch (VpkPackException ex)
         {
             setLoading(false, "");
             logger?.LogError($"{ex.Message}\n{ex.Output}");
             await dialogService.ShowWarningPopup("Packing Failed", ex.Message);
-            return false;
+            return WorkshopUploadResult.Failed;
         }
         catch (Exception ex)
         {
             setLoading(false, "");
             logger?.LogError("Upload failed.");
             _logException(ex);
-            return false;
+            return WorkshopUploadResult.Failed;
         }
     }
 
@@ -163,47 +176,6 @@ public class WorkshopUploadService(
         packer.Pack(files, store.GetVpkPath(itemId));
     }
 
-    /// <summary>
-    /// Links the addon to the item it was last uploaded as with the Workshop tools, if the user agrees.
-    /// </summary>
-    /// <returns>The new properties, or null if there's nothing to link or the user cancelled.</returns>
-    private async Task<WorkshopProperties?> LinkPublishedItem(WorkshopUploadRequest request)
-    {
-        var items = store.GetItemsForAddon(request.AddonName);
-        if (items.Count == 0)
-        {
-            await dialogService.ShowTextPopup(new DialogConfiguration
-            {
-                Title = "No Workshop Item",
-                Message = $"{request.AddonName} hasn't been uploaded to the Workshop yet. Upload it once with the Workshop Tools, then use Upload here for updates.",
-                Width = 400
-            });
-            return null;
-        }
-
-        var item = items[0];
-        var others = items.Count > 1
-            ? $"\n\nIt has also been uploaded as:\n{string.Join("\n", items.Skip(1).Select(other => $"• {other.Title} ({other.ItemId})"))}"
-            : "";
-
-        var response = await dialogService.ShowTextPopup(new DialogConfiguration
-        {
-            Title = "Link Workshop Item",
-            Message = $"{request.AddonName} was last uploaded as \"{item.Title}\" ({item.ItemId}).{others}\n\nLink it to this item so Upload sends updates to it?",
-            PrimaryButtonText = "Link item",
-            CancelButtonText = "Cancel",
-            Width = 450
-        });
-        if (response.Result != DialogResult.Primary)
-            return null;
-
-        var properties = new WorkshopProperties { ItemId = item.ItemId };
-        properties.Save(request.ContentPath);
-        logger?.LogInfo($"Linked {request.AddonName} to Workshop item {item.ItemId}");
-        return properties;
-    }
-
-    /// <returns>Primary to upload anyway, Secondary to also update the Workshop, or None to cancel.</returns>
     private async Task<DialogResult> AskAboutMismatch(WorkshopItemDetails remote, WorkshopFields differences)
     {
         var names = Enum.GetValues<WorkshopFields>()
@@ -220,22 +192,15 @@ public class WorkshopUploadService(
             Message = $"These properties of \"{remote.Title}\" are different on the Workshop than in this addon:\n\n" +
                 string.Join("\n", names.Select(name => $"• {name}")) +
                 "\n\nThey may have been edited on the Workshop page.\n\n" +
-                "Upload anyway keeps the Workshop's versions. Update Workshop too replaces them with this addon's.",
+                "Upload anyway keeps the Workshop's versions. Update Workshop too replaces them with this addon's. " +
+                "Open Properties lets you choose for each one.",
             PrimaryButtonText = "Upload anyway",
             SecondaryButtonText = "Update Workshop too",
+            TertiaryButtonText = "Open Properties",
             CancelButtonText = "Cancel",
-            Width = 450
+            Width = 560
         });
 
         return response.Result;
     }
-
-    private static WorkshopItemUpdate AddChangedProperties(WorkshopItemUpdate update, WorkshopProperties properties, string? description, WorkshopFields differences) => update with
-    {
-        Title = differences.HasFlag(WorkshopFields.Title) ? properties.Title : null,
-        Description = differences.HasFlag(WorkshopFields.Description) ? description : null,
-        Visibility = differences.HasFlag(WorkshopFields.Visibility) ? properties.Visibility : null,
-        Tags = differences.HasFlag(WorkshopFields.Tags) ? properties.Tags : null,
-        RequiredItems = differences.HasFlag(WorkshopFields.RequiredItems) ? properties.RequiredItems : null
-    };
 }

@@ -8,6 +8,7 @@ public record DialogConfiguration
     public DialogContext? Context { get; init; }
     public string? PrimaryButtonText { get; init; }
     public string? SecondaryButtonText { get; init; }
+    public string? TertiaryButtonText { get; init; }
     public string? CancelButtonText { get; init; }
 
     public bool? HasCheckBox { get; init; }
@@ -51,6 +52,7 @@ public record DialogConfiguration
         Context = other.Context ?? Context,
         PrimaryButtonText = other.PrimaryButtonText ?? PrimaryButtonText,
         SecondaryButtonText = other.SecondaryButtonText ?? SecondaryButtonText,
+        TertiaryButtonText = other.TertiaryButtonText ?? TertiaryButtonText,
         CancelButtonText = other.CancelButtonText ?? CancelButtonText,
         HasCheckBox = other.HasCheckBox ?? HasCheckBox,
         CheckBoxText = other.CheckBoxText ?? CheckBoxText,

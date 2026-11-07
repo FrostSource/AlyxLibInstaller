@@ -42,6 +42,9 @@
             <MenuItem Header="Remove All AlyxLib Files" Command="{Binding RemoveAllAlyxLibFilesCommand}" />
         </ContextMenu>
         <ContextMenu x:Key="UploadContextMenu">
+            <MenuItem Header="Item Properties…" Command="{Binding ShowWorkshopPropertiesCommand}" />
+            <MenuItem Header="Change Linked Item…" Command="{Binding ChangeLinkedWorkshopItemCommand}" />
+            <Separator />
             <MenuItem Header="Open Workshop Page" Command="{Binding OpenWorkshopPageCommand}" />
         </ContextMenu>
     </Window.Resources>

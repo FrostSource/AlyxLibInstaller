@@ -1,0 +1,43 @@
+﻿<UserControl x:Class="AlyxLibInstallerWPF.Dialogs.ChangeLinkedItemView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:converters="clr-namespace:AlyxLibInstallerWPF.Converters"
+             xmlns:root="clr-namespace:AlyxLibInstallerWPF"
+             xmlns:vm="clr-namespace:AlyxLibInstallerShared.ViewModels;assembly=AlyxLibInstallerShared"
+             d:DataContext="{d:DesignInstance Type=vm:ChangeLinkedItemViewModel}"
+             mc:Ignorable="d">
+    <UserControl.Resources>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </UserControl.Resources>
+
+    <StackPanel Width="400">
+        <TextBlock TextWrapping="Wrap" Margin="0,0,0,8"
+                   Text="Choose the Workshop item that Upload and Item Properties use for this addon." />
+
+        <StackPanel Visibility="{Binding HasItems, Converter={StaticResource BoolToVisibilityConverter}}">
+            <TextBlock Text="Uploaded from this addon:" FontWeight="SemiBold" Margin="0,4,0,4" />
+            <ItemsControl ItemsSource="{Binding Items}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:LinkableWorkshopItem}">
+                        <RadioButton GroupName="LinkedItem" IsChecked="{Binding IsSelected}" Margin="0,2">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Title}" />
+                                <TextBlock FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                                    <Run Text="{Binding ItemId, Mode=OneWay}" />
+                                    <Run Text="·" />
+                                    <Run Text="{Binding Published, Mode=OneWay}" />
+                                </TextBlock>
+                            </StackPanel>
+                        </RadioButton>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+
+        <RadioButton GroupName="LinkedItem" IsChecked="{Binding UseOtherItem}" Content="Another item:" Margin="0,8,0,4" />
+        <TextBox Text="{Binding OtherItemText, UpdateSourceTrigger=PropertyChanged}"
+                 root:TextBoxHelper.Placeholder="Workshop item ID or link" Margin="28,0,0,0" />
+    </StackPanel>
+</UserControl>

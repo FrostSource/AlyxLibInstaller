@@ -1,6 +1,7 @@
 ﻿using AlyxLibInstallerShared;
 using AlyxLibInstallerShared.Models;
 using AlyxLibInstallerShared.Services.Dialog;
+using AlyxLibInstallerShared.ViewModels;
 using AlyxLibInstallerWPF.Dialogs;
 using AlyxLibInstallerWPF.ViewModels;
 using Source2HelperLibrary;
@@ -40,6 +41,7 @@ public class WpfDialogService : WpfFolderPickerService, IDialogService
         {
             ContentDialogResult.Primary => DialogResult.Primary,
             ContentDialogResult.Secondary => DialogResult.Secondary,
+            ContentDialogResult.Tertiary => DialogResult.Tertiary,
             ContentDialogResult.None => DialogResult.None,
             _ => throw new NotImplementedException()
         };
@@ -124,5 +126,19 @@ public class WpfDialogService : WpfFolderPickerService, IDialogService
     public async Task<DialogResponse> ShowListPopup(DialogConfiguration config, IEnumerable<string> list)
     {
         return await ShowListPopup(config, list, null);
+    }
+
+    public async Task<DialogResponse> ShowWorkshopPropertiesPopup(DialogConfiguration config, WorkshopPropertiesEditorViewModel editor)
+    {
+        config = DialogConfiguration.Defaults.With(config);
+        var result = await ShowCustomPopup(new WorkshopPropertiesView { DataContext = editor }, config);
+        return new DialogResponse(result);
+    }
+
+    public async Task<DialogResponse> ShowChangeLinkedItemPopup(DialogConfiguration config, ChangeLinkedItemViewModel picker)
+    {
+        config = DialogConfiguration.Defaults.With(config);
+        var result = await ShowCustomPopup(new ChangeLinkedItemView { DataContext = picker }, config);
+        return new DialogResponse(result);
     }
 }

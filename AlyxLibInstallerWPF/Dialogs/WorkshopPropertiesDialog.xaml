@@ -1,0 +1,210 @@
+﻿<UserControl x:Class="AlyxLibInstallerWPF.Dialogs.WorkshopPropertiesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:converters="clr-namespace:AlyxLibInstallerWPF.Converters"
+             xmlns:root="clr-namespace:AlyxLibInstallerWPF"
+             xmlns:vm="clr-namespace:AlyxLibInstallerShared.ViewModels;assembly=AlyxLibInstallerShared"
+             d:DataContext="{d:DesignInstance Type=vm:WorkshopPropertiesEditorViewModel}"
+             mc:Ignorable="d"
+             x:Name="Root">
+    <UserControl.Resources>
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <converters:InvertBoolToVisibilityConverter x:Key="InvertBoolToVisibilityConverter" />
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,16,0,6" />
+        </Style>
+        <Style x:Key="Note" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Width="540">
+        <StackPanel Margin="0,0,16,0">
+
+            <TextBlock Style="{StaticResource Note}">
+                <Run Text="Workshop item" />
+                <Hyperlink NavigateUri="{Binding ItemUrl, Mode=OneWay}" RequestNavigate="Hyperlink_RequestNavigate">
+                    <Run Text="{Binding ItemId, Mode=OneWay}" />
+                </Hyperlink>
+            </TextBlock>
+
+            <!-- Workshop couldn't be checked -->
+            <Border Margin="0,12,0,0" Padding="12,8" CornerRadius="4"
+                    Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
+                    Visibility="{Binding RemoteError, Converter={StaticResource StringToVisibilityConverter}}">
+                <TextBlock TextWrapping="Wrap">
+                    <Run Text="Couldn't check the Workshop, so differences aren't shown." FontWeight="SemiBold" />
+                    <LineBreak />
+                    <Run Text="{Binding RemoteError, Mode=OneWay}" />
+                </TextBlock>
+            </Border>
+
+            <!-- Properties that differ from the Workshop -->
+            <Border Margin="0,12,0,0" Padding="12,8" CornerRadius="4"
+                    Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
+                    Visibility="{Binding HasMismatches, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock FontWeight="SemiBold" TextWrapping="Wrap"
+                               Text="These are different on the Workshop:" />
+                    <ItemsControl ItemsSource="{Binding Mismatches}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:WorkshopPropertyMismatch}">
+                                <StackPanel Margin="0,8,0,0">
+                                    <TextBlock TextWrapping="Wrap">
+                                        <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold" />
+                                        <Run Text="on the Workshop:" />
+                                        <Run Text="{Binding WorkshopValue, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                        <Button Content="Use Workshop version" Padding="8,2" Margin="0,0,8,0"
+                                                Command="{Binding DataContext.UseWorkshopVersionCommand, ElementName=Root}"
+                                                CommandParameter="{Binding}"
+                                                IsEnabled="{Binding CanUseWorkshopVersion}"
+                                                ToolTipService.ShowOnDisabled="True"
+                                                ToolTip="Replaces this addon's value with the Workshop's. A linked description file isn't overwritten, edit it to match instead." />
+                                        <ToggleButton Content="Update Workshop" Padding="8,2"
+                                                      IsChecked="{Binding UpdateWorkshop}"
+                                                      ToolTip="Replaces the Workshop's value with this addon's when you save" />
+                                    </StackPanel>
+                                    <TextBlock Style="{StaticResource Note}" Margin="0,4,0,0" Text="The Workshop is updated when you save."
+                                               Visibility="{Binding UpdateWorkshop, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- Title -->
+            <TextBlock Text="Title" Style="{StaticResource SectionHeader}" />
+            <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" />
+
+            <!-- Description -->
+            <Grid Margin="0,16,0,6">
+                <TextBlock Text="Description" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <Button Content="Link text file…" HorizontalAlignment="Right" Padding="8,2"
+                        Command="{Binding LinkDescriptionFileCommand}"
+                        ToolTip="Use a text file in your addon as the description instead"
+                        Visibility="{Binding HasDescriptionFile, Converter={StaticResource InvertBoolToVisibilityConverter}}" />
+            </Grid>
+            <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                     AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top"
+                     MinHeight="120" MaxHeight="240" VerticalScrollBarVisibility="Auto"
+                     Visibility="{Binding HasDescriptionFile, Converter={StaticResource InvertBoolToVisibilityConverter}}" />
+            <StackPanel Visibility="{Binding HasDescriptionFile, Converter={StaticResource BoolToVisibilityConverter}}">
+                <DockPanel>
+                    <Button Content="Unlink" DockPanel.Dock="Right" Padding="8,2" Margin="8,0,0,0"
+                            Command="{Binding UnlinkDescriptionFileCommand}"
+                            ToolTip="Go back to typing the description here, starting from the file's text" />
+                    <Button Content="Change…" DockPanel.Dock="Right" Padding="8,2" Margin="8,0,0,0"
+                            Command="{Binding LinkDescriptionFileCommand}" />
+                    <TextBlock TextWrapping="Wrap" VerticalAlignment="Center">
+                        <Run Text="Using the text in" />
+                        <Run Text="{Binding DescriptionFile, Mode=OneWay}" FontWeight="SemiBold" />
+                    </TextBlock>
+                </DockPanel>
+                <TextBlock Text="{Binding DescriptionFileError}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                           Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                           Visibility="{Binding DescriptionFileError, Converter={StaticResource StringToVisibilityConverter}}" />
+            </StackPanel>
+
+            <!-- Visibility -->
+            <TextBlock Text="Visibility" Style="{StaticResource SectionHeader}" />
+            <ComboBox ItemsSource="{Binding VisibilityOptions}"
+                      DisplayMemberPath="Key" SelectedValuePath="Value"
+                      SelectedValue="{Binding Visibility}"
+                      MinWidth="160" HorizontalAlignment="Left" />
+
+            <!-- Tags -->
+            <TextBlock Text="Tags" Style="{StaticResource SectionHeader}" />
+            <Expander>
+                <Expander.Header>
+                    <TextBlock Text="{Binding SelectedTagsSummary}" TextWrapping="Wrap" />
+                </Expander.Header>
+                <ItemsControl ItemsSource="{Binding TagGroups}" Margin="0,4,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:WorkshopTagGroupOption}">
+                            <StackPanel Margin="0,0,0,8">
+                                <TextBlock Text="{Binding Name}" Style="{StaticResource Note}" Margin="0,0,0,2" />
+                                <ItemsControl ItemsSource="{Binding Tags}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:WorkshopTagOption}">
+                                            <CheckBox Content="{Binding Name}" IsChecked="{Binding IsSelected}" Margin="0,0,16,0" MinWidth="0" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Expander>
+
+            <!-- Required items -->
+            <TextBlock Text="Required items" Style="{StaticResource SectionHeader}" />
+            <TextBlock Text="Players are asked to subscribe to these too." Style="{StaticResource Note}" Margin="0,0,0,4" />
+            <ItemsControl ItemsSource="{Binding RequiredItems}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:RequiredItemOption}">
+                        <DockPanel Margin="0,2">
+                            <Button Content="Remove" DockPanel.Dock="Right" Padding="8,2"
+                                    Command="{Binding DataContext.RemoveRequiredItemCommand, ElementName=Root}"
+                                    CommandParameter="{Binding}" />
+                            <TextBlock VerticalAlignment="Center">
+                                <Hyperlink NavigateUri="{Binding Url, Mode=OneWay}" RequestNavigate="Hyperlink_RequestNavigate">
+                                    <Run Text="{Binding Name, Mode=OneWay}" />
+                                </Hyperlink>
+                            </TextBlock>
+                        </DockPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Border Margin="0,6,0,0" Padding="12,8" CornerRadius="4"
+                    Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}"
+                    Visibility="{Binding IsAlyxLibRequired, Converter={StaticResource InvertBoolToVisibilityConverter}}">
+                <DockPanel>
+                    <Button Content="Add AlyxLib" DockPanel.Dock="Right" Padding="8,2" Margin="8,0,0,0" VerticalAlignment="Center"
+                            Command="{Binding AddAlyxLibCommand}" />
+                    <TextBlock TextWrapping="Wrap" VerticalAlignment="Center"
+                               Text="Requiring AlyxLib is recommended, so players who subscribe to this addon get AlyxLib too." />
+                </DockPanel>
+            </Border>
+            <DockPanel Margin="0,6,0,0">
+                <Button Content="Add" DockPanel.Dock="Right" Padding="12,2" Margin="8,0,0,0"
+                        Command="{Binding AddRequiredItemCommand}" />
+                <TextBox Text="{Binding NewRequiredItemText, UpdateSourceTrigger=PropertyChanged}"
+                         root:TextBoxHelper.Placeholder="Workshop item ID or link" />
+            </DockPanel>
+            <TextBlock Text="{Binding RequiredItemError}" FontSize="12" Margin="0,4,0,0"
+                       Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                       Visibility="{Binding RequiredItemError, Converter={StaticResource StringToVisibilityConverter}}" />
+
+            <!-- Preview -->
+            <TextBlock Text="Preview image" Style="{StaticResource SectionHeader}" />
+            <DockPanel>
+                <Border DockPanel.Dock="Left" Width="160" Height="90" CornerRadius="4" Margin="0,0,12,0"
+                        Background="{DynamicResource ControlFillColorDefaultBrush}">
+                    <Image Source="{Binding PreviewSource, TargetNullValue={x:Null}}" Stretch="Uniform" />
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <Button Content="Choose image…" Padding="8,2" HorizontalAlignment="Left"
+                            Command="{Binding ChoosePreviewCommand}" />
+                    <TextBlock Style="{StaticResource Note}" Margin="0,6,0,0" Text="PNG, JPG or GIF, up to 1 MB." />
+                    <TextBlock Style="{StaticResource Note}" Margin="0,2,0,0" Text="Uploaded to the Workshop when you save."
+                               Visibility="{Binding PreviewChanged, Converter={StaticResource BoolToVisibilityConverter}}" />
+                </StackPanel>
+            </DockPanel>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
