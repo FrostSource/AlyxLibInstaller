@@ -260,6 +260,9 @@ namespace FileDeployment
             var manifest = JsonSerializer.Deserialize<DeploymentManifest>(content, options)
                 ?? throw new JsonException("Failed to deserialize manifest");
 
+            // Deserializing replaces the dictionary, losing its case insensitive comparer
+            manifest.Categories = new(manifest.Categories, StringComparer.OrdinalIgnoreCase);
+
             manifest.ApplyDefaultChecks();
             manifest.ApplyManifestContext();
 
