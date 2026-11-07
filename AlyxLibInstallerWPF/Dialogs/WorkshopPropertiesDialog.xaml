@@ -27,12 +27,16 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Width="540">
         <StackPanel Margin="0,0,16,0">
 
-            <TextBlock Style="{StaticResource Note}">
+            <TextBlock Style="{StaticResource Note}"
+                       Visibility="{Binding IsNewItem, Converter={StaticResource InvertBoolToVisibilityConverter}}">
                 <Run Text="Workshop item" />
                 <Hyperlink NavigateUri="{Binding ItemUrl, Mode=OneWay}" RequestNavigate="Hyperlink_RequestNavigate">
                     <Run Text="{Binding ItemId, Mode=OneWay}" />
                 </Hyperlink>
             </TextBlock>
+            <TextBlock Style="{StaticResource Note}"
+                       Visibility="{Binding IsNewItem, Converter={StaticResource BoolToVisibilityConverter}}"
+                       Text="New Workshop item. It's created when you first upload. A title and preview image are required." />
 
             <!-- Workshop couldn't be checked -->
             <Border Margin="0,12,0,0" Padding="12,8" CornerRadius="4"

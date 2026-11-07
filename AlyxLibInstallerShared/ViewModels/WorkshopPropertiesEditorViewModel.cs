@@ -66,6 +66,11 @@ public partial class WorkshopPropertiesEditorViewModel : ObservableObject
     public string ItemUrl => WorkshopLinks.GetItemUrl(ItemId);
 
     /// <summary>
+    /// The item hasn't been created on the Workshop yet.
+    /// </summary>
+    public bool IsNewItem => ItemId == 0;
+
+    /// <summary>
     /// Why the Workshop's properties couldn't be loaded, if they couldn't.
     /// </summary>
     public string? RemoteError { get; }
@@ -262,7 +267,11 @@ public partial class WorkshopPropertiesEditorViewModel : ObservableObject
         if ((CurrentDescription?.Length ?? 0) > MaxDescriptionLength)
             return $"The description is too long. It can be at most {MaxDescriptionLength} characters.";
 
-        if (PreviewChanged && PreviewFile != null)
+        // Steam doesn't show items without a preview properly
+        if (IsNewItem && PreviewFile == null)
+            return "Choose a preview image. New Workshop items need one.";
+
+        if ((PreviewChanged || IsNewItem) && PreviewFile != null)
         {
             var preview = new FileInfo(WorkshopProperties.ResolvePath(_contentPath, PreviewFile));
             if (!preview.Exists)

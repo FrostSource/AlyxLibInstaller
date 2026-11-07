@@ -88,9 +88,9 @@ public partial class AlyxLibInstallerSharedViewModel
         }
 
         var properties = WorkshopProperties.Load(SelectedAddon.ContentPath);
-        if (properties == null)
+        if (properties?.HasItem != true)
         {
-            _logger?.LogWarning($"{SelectedAddon.Name} isn't linked to a Workshop item yet. Upload it to link it.");
+            _logger?.LogWarning($"{SelectedAddon.Name} isn't on the Workshop yet. Upload it to create its Workshop item.");
             return;
         }
 

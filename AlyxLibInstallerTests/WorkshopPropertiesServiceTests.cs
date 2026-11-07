@@ -174,6 +174,30 @@ public class WorkshopPropertiesServiceTests
     }
 
     [TestMethod]
+    public void NewItemPropertiesAreSavedWithoutConnecting()
+    {
+        _dialogs.OnPopupShown = popup =>
+        {
+            var editor = (WorkshopPropertiesEditorViewModel)popup;
+            Assert.IsTrue(editor.IsNewItem);
+            editor.Title = "Resin Watch";
+            editor.ChoosePreviewCommand.Execute(null);
+        };
+        _dialogs.PickFileResult = _fs.WriteFile("content/preview.png", "image");
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
+
+        Assert.IsTrue(Edit());
+
+        Assert.AreEqual(0, _connectCount);
+        Assert.AreEqual("New Workshop Item", _dialogs.Shown[1].Config!.Title);
+        var saved = WorkshopProperties.Load(ContentPath)!;
+        Assert.IsFalse(saved.HasItem);
+        Assert.AreEqual("Resin Watch", saved.Title);
+        Assert.AreEqual("preview.png", saved.PreviewFile);
+    }
+
+    [TestMethod]
     public void ChangingTheLinkChecksTheItemAndKeepsProperties()
     {
         Link(properties => properties.Title = "Kept title");

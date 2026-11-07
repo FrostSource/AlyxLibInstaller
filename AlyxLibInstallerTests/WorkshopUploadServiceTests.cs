@@ -1,6 +1,7 @@
 ﻿using AlyxLib.Workshop;
 using AlyxLibInstallerShared.Services;
 using AlyxLibInstallerShared.Services.Dialog;
+using AlyxLibInstallerShared.ViewModels;
 
 namespace AlyxLibInstallerTests;
 
@@ -254,6 +255,145 @@ public class WorkshopUploadServiceTests
         Assert.IsFalse(_isLoading);
     }
 
+    /// <summary>
+    /// Fills in the new item's properties when the editor is shown.
+    /// </summary>
+    private void FillNewItem(bool withPreview = true)
+    {
+        _dialogs.PickFileResult = _fs.WriteFile("content/preview.png", "image");
+        _dialogs.OnPopupShown = popup =>
+        {
+            var editor = (WorkshopPropertiesEditorViewModel)popup;
+            editor.Title = "Resin Watch";
+            editor.Description = "Tracks resin";
+            if (withPreview)
+                editor.ChoosePreviewCommand.Execute(null);
+        };
+    }
+
+    [TestMethod]
+    public void NewItemIsCreatedAndUploadedWithEveryProperty()
+    {
+        FillNewItem();
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary, inputText: "First release");
+
+        Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
+
+        Assert.AreEqual("New Item", _dialogs.Shown[0].Config!.PrimaryButtonText);
+        Assert.AreEqual(1, _client.CreatedCount);
+        var update = _client.Submitted.Single();
+        Assert.AreEqual(_client.CreatedItemId, update.ItemId);
+        Assert.AreEqual(_store.GetItemFolder(_client.CreatedItemId), update.ContentFolder);
+        Assert.AreEqual("First release", update.ChangeNote);
+        Assert.AreEqual("Resin Watch", update.Title);
+        Assert.AreEqual("Tracks resin", update.Description);
+        Assert.AreEqual(WorkshopVisibility.Private, update.Visibility);
+        CollectionAssert.AreEqual(new[] { WorkshopTags.AlyxAddon }, update.Tags!.ToArray());
+        CollectionAssert.AreEqual(new[] { WorkshopProperties.AlyxLibItemId }, update.RequiredItems!.ToArray());
+        Assert.AreEqual(Path.GetFullPath(_fs.PathOf("content/preview.png")), update.PreviewFile);
+        Assert.IsTrue(File.Exists(_store.GetVpkPath(_client.CreatedItemId)));
+        Assert.IsFalse(_isLoading);
+
+        var saved = WorkshopProperties.Load(_fs.PathOf("content"))!;
+        Assert.AreEqual(_client.CreatedItemId, saved.ItemId);
+        Assert.AreEqual("Resin Watch", saved.Title);
+        Assert.AreEqual(_client.CreatedItemId, _store.GetItemsForAddon("resin_watch").Single().ItemId);
+    }
+
+    [TestMethod]
+    public void LinkPromptCanSetUpANewItemInstead()
+    {
+        _store.Save(new PublishData(ItemId, "Resin Watch", "resin_watch", DateTimeOffset.Now));
+        FillNewItem();
+        _dialogs.Respond(DialogResult.Secondary);
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
+
+        Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
+
+        Assert.AreEqual("New Item", _dialogs.Shown[0].Config!.SecondaryButtonText);
+        Assert.AreEqual(_client.CreatedItemId, _client.Submitted.Single().ItemId);
+        Assert.AreEqual(_client.CreatedItemId, WorkshopProperties.Load(_fs.PathOf("content"))!.ItemId);
+    }
+
+    [TestMethod]
+    public void NewItemNeedsAPreviewImage()
+    {
+        FillNewItem(withPreview: false);
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.None);
+        _dialogs.Respond(DialogResult.None);
+
+        Assert.AreEqual(WorkshopUploadResult.Cancelled, Upload().Result);
+
+        StringAssert.Contains(_dialogs.Shown[2].Config!.Message, "preview image");
+        Assert.AreEqual(0, _client.CreatedCount);
+        Assert.IsNull(WorkshopProperties.Load(_fs.PathOf("content")));
+    }
+
+    [TestMethod]
+    public void CancellingNewItemChangeNotesKeepsItsProperties()
+    {
+        FillNewItem();
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.None);
+
+        Assert.AreEqual(WorkshopUploadResult.Cancelled, Upload().Result);
+
+        Assert.AreEqual(0, _connectCount);
+        var saved = WorkshopProperties.Load(_fs.PathOf("content"))!;
+        Assert.IsFalse(saved.HasItem);
+        Assert.AreEqual("Resin Watch", saved.Title);
+    }
+
+    [TestMethod]
+    public void NewItemWithNothingToPackIsNotCreated()
+    {
+        File.Delete(_fs.PathOf("game/models/watch.vmdl_c"));
+        FillNewItem();
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
+
+        Assert.AreEqual(WorkshopUploadResult.Failed, Upload().Result);
+
+        Assert.AreEqual("Nothing to Upload", _dialogs.Shown.Last().Config!.Title);
+        Assert.AreEqual(0, _client.CreatedCount);
+    }
+
+    [TestMethod]
+    public void FailedFirstUploadIsFinishedOnTheSameItem()
+    {
+        FillNewItem();
+        _client.SubmitError = new WorkshopException("Lost connection to Steam.");
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
+        _dialogs.Respond(DialogResult.Primary);
+
+        Assert.AreEqual(WorkshopUploadResult.Failed, Upload().Result);
+
+        StringAssert.Contains(_dialogs.Shown.Last().Config!.Message, "Use Upload again");
+        Assert.AreEqual(_client.CreatedItemId, WorkshopProperties.Load(_fs.PathOf("content"))!.ItemId);
+        Assert.IsTrue(_client.Disposed);
+
+        // Steam has the item, but none of its properties
+        _client.SubmitError = null;
+        _client.Item = new WorkshopItemDetails(_client.CreatedItemId, "", "", WorkshopVisibility.Private, [], [], "", DateTimeOffset.Now);
+        _dialogs.OnPopupShown = null;
+        _dialogs.Respond(DialogResult.Secondary);
+        _dialogs.Respond(DialogResult.Primary);
+
+        Assert.AreEqual(WorkshopUploadResult.Uploaded, Upload().Result);
+
+        Assert.AreEqual(1, _client.CreatedCount);
+        var update = _client.Submitted.Single();
+        Assert.AreEqual("Resin Watch", update.Title);
+        Assert.AreEqual(Path.GetFullPath(_fs.PathOf("content/preview.png")), update.PreviewFile);
+    }
+
     [TestMethod]
     public void LegalAgreementIsShownAfterUpload()
     {
@@ -273,14 +413,29 @@ internal class FakeWorkshopClient : IWorkshopClient
 {
     public WorkshopItemDetails? Item { get; set; }
     public bool NeedsLegalAgreement { get; set; }
+    public ulong CreatedItemId { get; set; } = 4000000001;
 
     public List<WorkshopItemUpdate> Submitted { get; } = [];
+    public int CreatedCount { get; private set; }
+
+    /// <summary>
+    /// Thrown by <see cref="SubmitUpdateAsync"/> instead of recording the update.
+    /// </summary>
+    public WorkshopException? SubmitError { get; set; }
     public bool Disposed { get; private set; }
 
     public Task<WorkshopItemDetails?> GetItemAsync(ulong itemId, CancellationToken cancellationToken = default) => Task.FromResult(Item);
 
+    public Task<WorkshopCreateResult> CreateItemAsync(CancellationToken cancellationToken = default)
+    {
+        CreatedCount++;
+        return Task.FromResult(new WorkshopCreateResult(CreatedItemId, NeedsLegalAgreement));
+    }
+
     public Task<WorkshopSubmitResult> SubmitUpdateAsync(WorkshopItemUpdate update, IProgress<WorkshopUploadProgress>? progress = null, CancellationToken cancellationToken = default)
     {
+        if (SubmitError != null)
+            throw SubmitError;
         Submitted.Add(update);
         return Task.FromResult(new WorkshopSubmitResult(NeedsLegalAgreement));
     }

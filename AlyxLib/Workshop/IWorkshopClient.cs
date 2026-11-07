@@ -13,6 +13,12 @@ public interface IWorkshopClient : IDisposable
     Task<WorkshopItemDetails?> GetItemAsync(ulong itemId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Creates an empty item owned by the user. It has no title or content until an update is submitted.
+    /// </summary>
+    /// <exception cref="WorkshopException">Steam couldn't create the item.</exception>
+    Task<WorkshopCreateResult> CreateItemAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Submits an update. Only the fields set in <paramref name="update"/> are changed.
     /// </summary>
     /// <exception cref="WorkshopException">Steam rejected the update.</exception>
@@ -48,10 +54,19 @@ public record WorkshopItemUpdate(ulong ItemId)
         Tags = fields.HasFlag(WorkshopFields.Tags) ? properties.Tags : Tags,
         RequiredItems = fields.HasFlag(WorkshopFields.RequiredItems) ? properties.RequiredItems : RequiredItems
     };
+
+    /// <summary>
+    /// Adds every local property to the update, e.g. for a new item.
+    /// </summary>
+    public WorkshopItemUpdate WithAllProperties(WorkshopProperties properties, string? description) =>
+        WithProperties(properties, description, WorkshopFields.Title | WorkshopFields.Description | WorkshopFields.Visibility | WorkshopFields.Tags | WorkshopFields.RequiredItems);
 }
 
 /// <param name="NeedsLegalAgreement">The update was saved, but stays hidden until the user accepts the Workshop legal agreement.</param>
 public record WorkshopSubmitResult(bool NeedsLegalAgreement);
+
+/// <param name="NeedsLegalAgreement">The item was created, but stays hidden until the user accepts the Workshop legal agreement.</param>
+public record WorkshopCreateResult(ulong ItemId, bool NeedsLegalAgreement);
 
 /// <param name="Fraction">How much of the current stage is done, or null if Steam doesn't report it.</param>
 public record WorkshopUploadProgress(string Stage, double? Fraction);

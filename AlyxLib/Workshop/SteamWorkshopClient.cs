@@ -107,6 +107,17 @@ public sealed class SteamWorkshopClient : IWorkshopClient
         }
     }
 
+    public async Task<WorkshopCreateResult> CreateItemAsync(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        var created = await WaitAsync<CreateItemResult_t>(SteamUGC.CreateItem(new AppId_t(AppId), EWorkshopFileType.k_EWorkshopFileTypeCommunity), cancellationToken);
+        if (created.m_eResult != EResult.k_EResultOK)
+            throw new WorkshopException($"Steam couldn't create the Workshop item: {Describe(created.m_eResult)}");
+
+        return new WorkshopCreateResult(created.m_nPublishedFileId.m_PublishedFileId, created.m_bUserNeedsToAcceptWorkshopLegalAgreement);
+    }
+
     public async Task<WorkshopSubmitResult> SubmitUpdateAsync(WorkshopItemUpdate update, IProgress<WorkshopUploadProgress>? progress = null, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

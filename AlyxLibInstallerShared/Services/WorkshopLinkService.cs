@@ -11,9 +11,13 @@ namespace AlyxLibInstallerShared.Services;
 public class WorkshopLinkService(IDialogService dialogService, WorkshopItemStore store, ILogger? logger = null)
 {
     /// <summary>
-    /// Loads the addon's Workshop properties, or links it to the item it was last uploaded as with the Workshop tools if the user agrees.
+    /// Loads the addon's Workshop properties. If it isn't linked yet, the user can link it to the item it was last uploaded as
+    /// with the Workshop tools, or set up a new item.
     /// </summary>
-    /// <returns>The properties, or null if there's nothing to link or the user cancelled.</returns>
+    /// <returns>
+    /// The properties, without an item if the user chose a new one (see <see cref="WorkshopProperties.HasItem"/>),
+    /// or null if the user cancelled.
+    /// </returns>
     public async Task<WorkshopProperties?> LoadOrLinkAsync(string addonName, string contentPath)
     {
         var existing = WorkshopProperties.Load(contentPath);
@@ -23,13 +27,15 @@ public class WorkshopLinkService(IDialogService dialogService, WorkshopItemStore
         var items = store.GetItemsForAddon(addonName);
         if (items.Count == 0)
         {
-            await dialogService.ShowTextPopup(new DialogConfiguration
+            var create = await dialogService.ShowTextPopup(new DialogConfiguration
             {
                 Title = "No Workshop Item",
-                Message = $"{addonName} hasn't been uploaded to the Workshop yet. Upload it once with the Workshop Tools, then use Upload here for updates.",
-                Width = 400
+                Message = $"{addonName} hasn't been uploaded to the Workshop yet.\n\nSet up a new Workshop item for it? The item is created when you first upload.",
+                PrimaryButtonText = "New Item",
+                CancelButtonText = "Cancel",
+                Width = 420
             });
-            return null;
+            return create.Result == DialogResult.Primary ? NewItem(addonName) : null;
         }
 
         var item = items[0];
@@ -40,11 +46,14 @@ public class WorkshopLinkService(IDialogService dialogService, WorkshopItemStore
         var response = await dialogService.ShowTextPopup(new DialogConfiguration
         {
             Title = "Link Workshop Item",
-            Message = $"{addonName} was last uploaded as \"{item.Title}\" ({item.ItemId}).{others}\n\nLink it to this item so Upload sends updates to it?",
+            Message = $"{addonName} was last uploaded as \"{item.Title}\" ({item.ItemId}).{others}\n\nLink it to this item so Upload sends updates to it, or set up a new item?",
             PrimaryButtonText = "Link item",
+            SecondaryButtonText = "New Item",
             CancelButtonText = "Cancel",
             Width = 450
         });
+        if (response.Result == DialogResult.Secondary)
+            return NewItem(addonName);
         if (response.Result != DialogResult.Primary)
             return null;
 
@@ -55,6 +64,15 @@ public class WorkshopLinkService(IDialogService dialogService, WorkshopItemStore
     }
 
     /// <summary>
+    /// Properties for a new item, not saved until the user fills them in.
+    /// </summary>
+    private WorkshopProperties NewItem(string addonName)
+    {
+        logger?.LogDetail($"Setting up a new Workshop item for {addonName}");
+        return new WorkshopProperties();
+    }
+
+    /// <summary>
     /// Lets the user link the addon to another of its published items, or any item by ID or link.
     /// The new item is checked on Steam before it's linked. Other saved properties are kept.
     /// </summary>
@@ -62,7 +80,7 @@ public class WorkshopLinkService(IDialogService dialogService, WorkshopItemStore
     public async Task<bool> ChangeLinkAsync(string addonName, string contentPath, Func<IWorkshopClient> connect, Action<bool, string> setLoading)
     {
         var properties = WorkshopProperties.Load(contentPath);
-        var picker = new ChangeLinkedItemViewModel(store.GetItemsForAddon(addonName), properties?.ItemId);
+        var picker = new ChangeLinkedItemViewModel(store.GetItemsForAddon(addonName), properties?.HasItem == true ? properties.ItemId : null);
 
         while (true)
         {

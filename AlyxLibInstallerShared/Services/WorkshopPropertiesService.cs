@@ -43,6 +43,9 @@ public class WorkshopPropertiesService(
         if (properties == null)
             return false;
 
+        if (!properties.HasItem)
+            return await EditNewItemAsync(addonName, contentPath, properties);
+
         WorkshopItemDetails? remote = null;
         string? remoteError = null;
         try
@@ -71,24 +74,8 @@ public class WorkshopPropertiesService(
         }
 
         var editor = new WorkshopPropertiesEditorViewModel(properties, contentPath, remote, remoteError, dialogService);
-        while (true)
-        {
-            var response = await dialogService.ShowWorkshopPropertiesPopup(new DialogConfiguration
-            {
-                Title = "Item Properties",
-                PrimaryButtonText = "Save",
-                CancelButtonText = "Cancel",
-                Width = 560
-            }, editor);
-            if (response.Result != DialogResult.Primary)
-                return false;
-
-            var problem = editor.Validate();
-            if (problem == null)
-                break;
-
-            await dialogService.ShowWarningPopup("Check Item Properties", problem);
-        }
+        if (!await ShowEditorAsync(dialogService, editor, "Item Properties", "Save"))
+            return false;
 
         var updated = editor.Build();
         updated.Save(contentPath);
@@ -129,6 +116,46 @@ public class WorkshopPropertiesService(
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Edits the properties of an item that hasn't been created yet. They're only saved in the addon until it's uploaded.
+    /// </summary>
+    private async Task<bool> EditNewItemAsync(string addonName, string contentPath, WorkshopProperties properties)
+    {
+        var editor = new WorkshopPropertiesEditorViewModel(properties, contentPath, null, null, dialogService);
+        if (!await ShowEditorAsync(dialogService, editor, "New Workshop Item", "Save"))
+            return false;
+
+        editor.Build().Save(contentPath);
+        logger?.LogInfo($"Saved Workshop properties for {addonName}. Upload it to create the Workshop item.");
+        return true;
+    }
+
+    /// <summary>
+    /// Shows the properties editor until the user cancels or enters valid properties.
+    /// </summary>
+    /// <returns>True if the user confirmed valid properties.</returns>
+    internal static async Task<bool> ShowEditorAsync(IDialogService dialogService, WorkshopPropertiesEditorViewModel editor, string title, string confirmText)
+    {
+        while (true)
+        {
+            var response = await dialogService.ShowWorkshopPropertiesPopup(new DialogConfiguration
+            {
+                Title = title,
+                PrimaryButtonText = confirmText,
+                CancelButtonText = "Cancel",
+                Width = 560
+            }, editor);
+            if (response.Result != DialogResult.Primary)
+                return false;
+
+            var problem = editor.Validate();
+            if (problem == null)
+                return true;
+
+            await dialogService.ShowWarningPopup("Check Item Properties", problem);
+        }
     }
 
     private static bool HasUntrackedProperties(WorkshopProperties properties) =>

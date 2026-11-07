@@ -43,6 +43,12 @@ public class WorkshopProperties
     [JsonIgnore]
     public bool HasDescriptionFile => !string.IsNullOrWhiteSpace(DescriptionFile);
 
+    /// <summary>
+    /// False for a new item whose properties are set up but which hasn't been created on the Workshop yet.
+    /// </summary>
+    [JsonIgnore]
+    public bool HasItem => ItemId != 0;
+
     public static string GetPath(string contentPath) => Path.Combine(contentPath, ".alyxlib", FileName);
 
     /// <summary>
