@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using FileDeployment.Extensions;
+using System.Reflection;
 using System.Text.Json;
 
 namespace FileDeployment
@@ -10,7 +11,7 @@ namespace FileDeployment
         private static Dictionary<string, Type> LoadRuleTypes()
         {
             return AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(assembly => assembly.GetTypes())
+                .SelectMany(assembly => assembly.GetLoadableTypes())
                 .Where(type => typeof(ValidationRule).IsAssignableFrom(type) && !type.IsAbstract)
                 .ToDictionary(
                     type =>
