@@ -288,16 +288,24 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 
         // Hopefully watching the game folder isn't a big overhead
         _addonGameFolderMonitor?.Dispose();
-        _addonGameFolderMonitor = new FileSystemWatcher(addon.GamePath)
+        _addonGameFolderMonitor = null;
+        // A content-only addon (e.g. freshly cloned) has no game folder yet, and watching a missing folder throws
+        if (Directory.Exists(addon.GamePath))
         {
-            EnableRaisingEvents = true,
-            IncludeSubdirectories = true,
-            NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName
-        };
-        // Automatically update the file removal count
-        _addonGameFolderMonitor.Created += (_, _) => OnPropertyChanged(nameof(FileRemovalCount));
-        _addonGameFolderMonitor.Deleted += (_, _) => OnPropertyChanged(nameof(FileRemovalCount));
-        _addonGameFolderMonitor.Renamed += (_, _) => OnPropertyChanged(nameof(FileRemovalCount));
+            _addonGameFolderMonitor = new FileSystemWatcher(addon.GamePath)
+            {
+                EnableRaisingEvents = true,
+                IncludeSubdirectories = true,
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName
+            };
+            // Automatically update the file removal count
+            _addonGameFolderMonitor.Created += (_, _) => OnPropertyChanged(nameof(FileRemovalCount));
+            _addonGameFolderMonitor.Deleted += (_, _) => OnPropertyChanged(nameof(FileRemovalCount));
+            _addonGameFolderMonitor.Renamed += (_, _) => OnPropertyChanged(nameof(FileRemovalCount));
+        }
+
+        // The upload reminder belongs to the previously selected addon
+        AlyxLibRemovedFromAddonForUpload = false;
 
         SelectedAddon = addon;
 
@@ -632,7 +640,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             switch (response.Result)
             {
                 case DialogResult.Primary:
-                    DownloadAlyxLib();
+                    await DownloadAlyxLibAsync();
                     break;
                 case DialogResult.Secondary:
                     PickAlyxLibPath();
@@ -678,7 +686,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
                     switch (response.Result)
                     {
                         case DialogResult.Primary:
-                            DownloadAlyxLib();
+                            await UpdateAlyxLib();
                             break;
                     }
                 }
@@ -727,7 +735,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 
                 if (response.Result == DialogResult.Primary)
                 {
-                    DownloadAlyxLib();
+                    await UpdateAlyxLib();
                     return;
                 }
 
@@ -895,24 +903,34 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 
         SetLoading(true, "Installing AlyxLib");
 
-        AlyxLibInstance.FileManager.InstallAlyxLib(SelectedAddon, new()
+        try
         {
-            VScriptInstalled = AddonConfig.VScriptInstalled,
-            SoundEventInstalled = AddonConfig.SoundEventInstalled,
-            PanoramaInstalled = AddonConfig.PanoramaInstalled,
-            GitInstalled = AddonConfig.GitInstalled,
-            ModFolderName = DefaultModFolderName,
-            EditorType = AddonConfig.EditorType,
+            AlyxLibInstance.FileManager.InstallAlyxLib(SelectedAddon, new()
+            {
+                VScriptInstalled = AddonConfig.VScriptInstalled,
+                SoundEventInstalled = AddonConfig.SoundEventInstalled,
+                PanoramaInstalled = AddonConfig.PanoramaInstalled,
+                GitInstalled = AddonConfig.GitInstalled,
+                ModFolderName = DefaultModFolderName,
+                EditorType = AddonConfig.EditorType,
 
-            FileRemovalGlobs = AddonConfig.FileRemovalGlobs,
+                FileRemovalGlobs = AddonConfig.FileRemovalGlobs,
 
-            Version = AlyxLibInstance.AlyxLibVersion
-        });
+                Version = AlyxLibInstance.AlyxLibVersion
+            });
 
-        ReloadAddonConfig();
-
-        SetLoading(false);
-        AlyxLibRemovedFromAddonForUpload = false;
+            AlyxLibRemovedFromAddonForUpload = false;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError("AlyxLib installation failed.");
+            LogException(ex, true);
+        }
+        finally
+        {
+            ReloadAddonConfig();
+            SetLoading(false);
+        }
     }
 
     [ObservableProperty]
@@ -929,11 +947,21 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 
         SetLoading(true, "Removing AlyxLib...");
 
-        AlyxLibInstance.FileManager.UninstallAlyxLibForUpload(SelectedAddon, AddonConfig.GetConfig());
-
-        SetLoading(false);
-
-        AlyxLibRemovedFromAddonForUpload = true;
+        try
+        {
+            AlyxLibInstance.FileManager.UninstallAlyxLibForUpload(SelectedAddon, AddonConfig.GetConfig());
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError("Removing AlyxLib for upload failed.");
+            LogException(ex, true);
+        }
+        finally
+        {
+            SetLoading(false);
+            // Some files may have been removed or moved even on failure, so the reminder to reinstall is always shown
+            AlyxLibRemovedFromAddonForUpload = true;
+        }
     }
 
     [RelayCommand]
@@ -1040,9 +1068,37 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
     private void SetLoading(bool isLoading, string text = "") => (IsCurrentlyLoading, LoadingOverlayText) = (isLoading, text);
 
     [RelayCommand]
-    private void DownloadAlyxLib() => DownloadAlyxLib(true);
+    private Task DownloadAlyxLib() => DownloadAlyxLibAsync(newLocation: true);
 
-    private async void DownloadAlyxLib(bool newLocation = false)
+    /// <summary>
+    /// Updates the current AlyxLib folder in place so addons already linked to it receive the update.
+    /// </summary>
+    private async Task UpdateAlyxLib()
+    {
+        if (AlyxLibInstance.AlyxLibExists && GitHelper.FolderIsRepositoryRoot(AlyxLibInstance.AlyxLibPath.FullName))
+        {
+            // Extracting over a clone would overwrite any local changes
+            var response = await _dialogService.ShowWarningPopup(new DialogConfiguration()
+            {
+                Title = "AlyxLib is a Git repository",
+                Message = $"Your AlyxLib folder is a Git repository:\n{AlyxLibInstance.AlyxLibPath.FullName}\n\n" +
+                "Pull the latest changes with Git instead, so your local changes aren't overwritten.",
+                PrimaryButtonText = "Download to a new folder",
+                CancelButtonText = "Cancel"
+            });
+
+            if (response.Result == DialogResult.Primary)
+                await DownloadAlyxLibAsync(newLocation: true);
+            else
+                _logger?.LogDetail("Update cancelled, AlyxLib folder is a Git repository.");
+
+            return;
+        }
+
+        await DownloadAlyxLibAsync(newLocation: false);
+    }
+
+    private async Task DownloadAlyxLibAsync(bool newLocation = false)
     {
         string downloadPath;
 
@@ -1075,14 +1131,24 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
         {
             await AlyxLibHelpers.DownloadRepository(Settings.GitHubUrl, downloadPath);
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
-            //_logger?.LogError($"Failed to download AlyxLib. Please check your internet connection.");
+            // TaskCanceledException is thrown when the download times out
             LogException(ex, true);
             await _dialogService.ShowWarningPopup(new DialogConfiguration()
             {
                 Title = "Connection Failed",
                 Message = "Unable to download AlyxLib. Please check your internet connection."
+            });
+            return;
+        }
+        catch (Exception ex)
+        {
+            LogException(ex, true);
+            await _dialogService.ShowWarningPopup(new DialogConfiguration()
+            {
+                Title = "Download Failed",
+                Message = $"Unable to download or extract AlyxLib to '{downloadPath}'.\n\n{ex.Message}"
             });
             return;
         }

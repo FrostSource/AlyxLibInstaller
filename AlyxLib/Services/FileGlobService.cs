@@ -71,6 +71,9 @@ public class FileGlobService
 
     public IReadOnlyList<FileRemovalMatch> GetMatchingFileActions(string dir)
     {
+        if (!Directory.Exists(dir))
+            return [];
+
         var includeRules = _rules.Where(rule => !rule.IsExclude).ToList();
         var excludeRules = _rules.Where(rule => rule.IsExclude).ToList();
         var directoryInfoWrapper = new DirectoryInfoWrapper(new DirectoryInfo(dir));
