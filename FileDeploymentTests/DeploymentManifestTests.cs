@@ -297,6 +297,107 @@ public class DeploymentManifestTests
         Assert.IsTrue(Directory.Exists(content));
     }
 
+    private const string ModInitJson = @"
+    {
+      ""Categories"": {
+        ""vscript"": [
+          {
+            ""type"": ""template"",
+            ""source"": ""{AlyxLib}/templates/script_init_workshop.txt"",
+            ""destination"": ""{AddonContent}/scripts/vscripts/mods/init/0000000000.lua"",
+            ""replacements"": ""{ModName}"",
+            ""rules"": [
+              {
+                ""type"": ""FileNameDoesNotExist"",
+                ""target"": ""destination"",
+                ""value"": ""rx:^\\d+\\.lua$""
+              }
+            ]
+          },
+          {
+            ""type"": ""template"",
+            ""source"": ""{AlyxLib}/templates/script_init_local.txt"",
+            ""destination"": ""{AddonContent}/scripts/vscripts/mods/init/{AddonFolderName}.lua"",
+            ""replacements"": ""{ModName}""
+          }
+        ]
+      }
+    }
+    ";
+
+    private string ModInitFolder => Path.Combine(_root, "content", "scripts", "vscripts", "mods", "init");
+
+    /// <summary>
+    /// Deploys the mod init files and returns the manifest set up like a full AlyxLib removal.
+    /// </summary>
+    private DeploymentManifest DeployModInit()
+    {
+        CreateAlyxLibFile("templates/script_init_workshop.txt", "workshop init for {0}");
+        CreateAlyxLibFile("templates/script_init_local.txt", "local init for {0}");
+
+        var manifest = DeploymentManifest.LoadFromString(ModInitJson);
+        manifest.AddVariable("AlyxLib", () => Path.Combine(_root, "alyxlib"));
+        manifest.AddVariable("AddonContent", () => Path.Combine(_root, "content"));
+        manifest.AddVariable("ModName", () => "MY_MOD");
+        manifest.AddVariable("AddonFolderName", () => "my_addon");
+        manifest.ProtectedFolders = [Path.Combine(_root, "content")];
+
+        Assert.AreEqual(2, manifest.DeployCategory("vscript").SuccessfulOperations);
+        return manifest;
+    }
+
+    [TestMethod()]
+    public void UndeployRemovesUnchangedModInitFilesTest()
+    {
+        var manifest = DeployModInit();
+
+        manifest.UndeployCategory("vscript", ignoreRemoveFlags: true);
+
+        Assert.IsFalse(Directory.Exists(Path.Combine(_root, "content", "scripts")));
+    }
+
+    [TestMethod()]
+    public void UndeployKeepsUserModInitFilesTest()
+    {
+        var manifest = DeployModInit();
+        var userFile = Path.Combine(ModInitFolder, "my_other_mod.lua");
+        File.WriteAllText(userFile, "user code");
+
+        manifest.UndeployCategory("vscript", ignoreRemoveFlags: true);
+
+        Assert.AreEqual("user code", File.ReadAllText(userFile));
+        Assert.IsFalse(File.Exists(Path.Combine(ModInitFolder, "my_addon.lua")));
+        Assert.IsFalse(File.Exists(Path.Combine(ModInitFolder, "0000000000.lua")));
+    }
+
+    [TestMethod()]
+    public void UndeployKeepsEditedModInitFilesTest()
+    {
+        var manifest = DeployModInit();
+        var localInit = Path.Combine(ModInitFolder, "my_addon.lua");
+        var workshopInit = Path.Combine(ModInitFolder, "0000000000.lua");
+        File.AppendAllText(localInit, "\nuser code");
+        File.AppendAllText(workshopInit, "\nuser code");
+
+        var result = manifest.UndeployCategory("vscript", ignoreRemoveFlags: true);
+
+        Assert.AreEqual(2, result.FailedOperations, "Edited files are reported as not removed");
+        StringAssert.EndsWith(File.ReadAllText(localInit), "user code");
+        StringAssert.EndsWith(File.ReadAllText(workshopInit), "user code");
+    }
+
+    [TestMethod()]
+    public void UndeployKeepsRenamedWorkshopInitFileTest()
+    {
+        var manifest = DeployModInit();
+        var renamed = Path.Combine(ModInitFolder, "3141592653.lua");
+        File.Move(Path.Combine(ModInitFolder, "0000000000.lua"), renamed);
+
+        manifest.UndeployCategory("vscript", ignoreRemoveFlags: true);
+
+        Assert.IsTrue(File.Exists(renamed), "A workshop init file renamed to the item ID belongs to the user");
+    }
+
     [TestMethod()]
     public void DeployCategoryWithMissingSourceFailsTest()
     {
