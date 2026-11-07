@@ -84,4 +84,15 @@ public static class Utils
         OperatingSystem.IsWindows() &&
         Environment.OSVersion.Version.Major >= 10 &&
         Environment.OSVersion.Version.Build >= 22000;
+
+    /// <summary>
+    /// Formats a size for people to read, e.g. "3.4 MB".
+    /// </summary>
+    public static string FormatFileSize(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} bytes",
+        < 1024 * 1024 => $"{bytes / 1024.0:0} KB",
+        < 1024L * 1024 * 1024 => $"{bytes / (1024.0 * 1024):0.#} MB",
+        _ => $"{bytes / (1024.0 * 1024 * 1024):0.##} GB"
+    };
 }

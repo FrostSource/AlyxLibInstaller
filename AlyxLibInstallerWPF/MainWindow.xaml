@@ -47,6 +47,41 @@
             <Separator />
             <MenuItem Header="Open Workshop Page" Command="{Binding OpenWorkshopPageCommand}" />
         </ContextMenu>
+
+        <!-- Split buttons: the two halves share one outline, with a short divider between them -->
+        <Style x:Key="SplitButtonMainStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Border.CornerRadius" Value="4,0,0,4" />
+            <Setter Property="BorderThickness" Value="1,1,0,1" />
+            <Setter Property="Padding" Value="12,4" />
+        </Style>
+        <Style x:Key="SplitButtonArrowStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Border.CornerRadius" Value="0,4,4,0" />
+            <Setter Property="BorderThickness" Value="0,1,1,1" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Width" Value="32" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+        </Style>
+        <Style x:Key="SplitButtonDividerStyle" TargetType="Border">
+            <Setter Property="Width" Value="1" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Margin" Value="0,7" />
+            <Setter Property="Opacity" Value="0.35" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+        </Style>
+
+        <!-- Green accent for Upload, so it stands apart from the blue Install button. The brushes are set where it's used -->
+        <Style x:Key="GreenSplitButtonMainStyle" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
+            <Setter Property="Border.CornerRadius" Value="4,0,0,4" />
+            <Setter Property="BorderThickness" Value="1,1,0,1" />
+            <Setter Property="Padding" Value="12,4" />
+        </Style>
+        <Style x:Key="GreenSplitButtonArrowStyle" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
+            <Setter Property="Border.CornerRadius" Value="0,4,4,0" />
+            <Setter Property="BorderThickness" Value="0,1,1,1" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Width" Value="32" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+        </Style>
     </Window.Resources>
     <!--<Window.DataContext>-->
         <!--<vm:AlyxLibInstallerSharedViewModel/>-->
@@ -262,21 +297,18 @@
 
                                 <!-- Main button -->
                                 <Button Grid.Column="0" Grid.Row="0"
-                                        Padding="12,4"
                                         x:Name="RemoveForUploadButton"
                                         Content="Remove For Upload"
+                                        Style="{StaticResource SplitButtonMainStyle}"
                                         Command="{Binding RemoveAlyxLibFromAddonForUploadCommand}"
                                         />
 
                                 <!-- Arrow button -->
                                 <Button Grid.Row="0" Grid.Column="1"
-                                        VerticalAlignment="Stretch"
                                         Click="SplitButtonArrow_Click"
                                         ContextMenu="{StaticResource UninstallContextMenu}"
-                                        Background="{Binding Background, ElementName=RemoveForUploadButton}"
-                                        BorderBrush="{Binding BorderBrush, ElementName=RemoveForUploadButton}"
-                                        BorderThickness="{Binding BorderThickness, ElementName=RemoveForUploadButton}"
-                                        Padding="0" Width="32" Height="{Binding ActualHeight, ElementName=RemoveForUploadButton}"
+                                        Style="{StaticResource SplitButtonArrowStyle}"
+                                        Height="{Binding ActualHeight, ElementName=RemoveForUploadButton}"
                                         >
 
                                     <!-- Chevron -->
@@ -289,11 +321,8 @@
                                 </Button>
                                 
                                 <Border Grid.Column="1"
-                                        Width="2"
-                                        HorizontalAlignment="Left"
-                                        Background="{DynamicResource ControlStrongStrokeColorDefaultBrush}"
-                                        Margin="0,2"
-                                        CornerRadius="2,0,0,2"
+                                        Style="{StaticResource SplitButtonDividerStyle}"
+                                        Background="{Binding Foreground, ElementName=RemoveForUploadButton}"
                                         />
                             </Grid>
 
@@ -303,22 +332,31 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
 
+                                <Grid.Resources>
+                                    <SolidColorBrush x:Key="AccentButtonBackground" Color="#1F8A3B" />
+                                    <SolidColorBrush x:Key="AccentButtonBackgroundPointerOver" Color="#25A046" />
+                                    <SolidColorBrush x:Key="AccentButtonBackgroundPressed" Color="#197231" />
+                                    <SolidColorBrush x:Key="AccentButtonBorderBrush" Color="#1A7A33" />
+                                    <SolidColorBrush x:Key="AccentButtonBorderBrushPointerOver" Color="#1F8A3B" />
+                                    <SolidColorBrush x:Key="AccentButtonBorderBrushPressed" Color="#197231" />
+                                    <SolidColorBrush x:Key="AccentButtonForeground" Color="White" />
+                                    <SolidColorBrush x:Key="AccentButtonForegroundPointerOver" Color="White" />
+                                    <SolidColorBrush x:Key="AccentButtonForegroundPressed" Color="#D8FFFFFF" />
+                                </Grid.Resources>
+
                                 <Button Grid.Column="0" Grid.Row="0"
-                                        Padding="12,4"
                                         x:Name="UploadButton"
+                                        Style="{StaticResource GreenSplitButtonMainStyle}"
                                         Content="Upload"
                                         ToolTip="Pack this addon and upload it as an update to its Workshop item, without removing any files"
                                         Command="{Binding UploadToWorkshopCommand}"
                                         />
 
                                 <Button Grid.Row="0" Grid.Column="1"
-                                        VerticalAlignment="Stretch"
                                         Click="SplitButtonArrow_Click"
                                         ContextMenu="{StaticResource UploadContextMenu}"
-                                        Background="{Binding Background, ElementName=UploadButton}"
-                                        BorderBrush="{Binding BorderBrush, ElementName=UploadButton}"
-                                        BorderThickness="{Binding BorderThickness, ElementName=UploadButton}"
-                                        Padding="0" Width="32" Height="{Binding ActualHeight, ElementName=UploadButton}"
+                                        Style="{StaticResource GreenSplitButtonArrowStyle}"
+                                        Height="{Binding ActualHeight, ElementName=UploadButton}"
                                         >
                                     <Path Data="M 0,0 L 5,5 L 10,0"
                                           Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2"
@@ -328,11 +366,8 @@
                                 </Button>
 
                                 <Border Grid.Column="1"
-                                        Width="2"
-                                        HorizontalAlignment="Left"
-                                        Background="{DynamicResource ControlStrongStrokeColorDefaultBrush}"
-                                        Margin="0,2"
-                                        CornerRadius="2,0,0,2"
+                                        Style="{StaticResource SplitButtonDividerStyle}"
+                                        Background="{Binding Foreground, ElementName=UploadButton}"
                                         />
                             </Grid>
 

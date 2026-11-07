@@ -11,6 +11,7 @@ namespace AlyxLibInstallerShared.Services;
 /// <param name="connect">Opens a Workshop connection, which is closed as soon as it's no longer needed.</param>
 /// <param name="setLoading">Shows or hides the loading overlay with a status message.</param>
 /// <param name="openUrl">Opens a web page, e.g. the Workshop legal agreement.</param>
+/// <param name="previewConverter">Converts preview images Steam won't take as they are.</param>
 public class WorkshopPropertiesService(
     IDialogService dialogService,
     Func<IWorkshopClient> connect,
@@ -18,7 +19,8 @@ public class WorkshopPropertiesService(
     Action<bool, string> setLoading,
     ILogger? logger = null,
     Action<Exception>? logException = null,
-    Action<string>? openUrl = null)
+    Action<string>? openUrl = null,
+    IPreviewImageConverter? previewConverter = null)
 {
     private readonly Action<Exception> _logException = logException ?? FileLogger.Log;
     private readonly Action<string> _openUrl = openUrl ?? Launcher.Launch;
@@ -95,7 +97,9 @@ public class WorkshopPropertiesService(
 
             var update = new WorkshopItemUpdate(updated.ItemId)
             {
-                PreviewFile = editor.PreviewChanged && updated.PreviewFile != null ? WorkshopProperties.ResolvePath(contentPath, updated.PreviewFile) : null
+                PreviewFile = editor.PreviewChanged && updated.PreviewFile != null
+                    ? PreviewImages.PrepareForUpload(WorkshopProperties.ResolvePath(contentPath, updated.PreviewFile), previewConverter)
+                    : null
             }.WithProperties(updated, editor.CurrentDescription, fields);
 
             setLoading(true, "Updating Workshop item...");
@@ -145,7 +149,7 @@ public class WorkshopPropertiesService(
                 Title = title,
                 PrimaryButtonText = confirmText,
                 CancelButtonText = "Cancel",
-                Width = 560
+                Width = 820
             }, editor);
             if (response.Result != DialogResult.Primary)
                 return false;

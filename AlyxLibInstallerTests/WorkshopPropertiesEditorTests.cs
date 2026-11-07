@@ -1,4 +1,5 @@
-﻿using AlyxLib.Workshop;
+using AlyxLib.Workshop;
+using AlyxLibInstallerShared.Services;
 using AlyxLibInstallerShared.ViewModels;
 
 namespace AlyxLibInstallerTests;
@@ -182,9 +183,9 @@ public class WorkshopPropertiesEditorTests
     }
 
     [TestMethod]
-    public void OversizedPreviewIsRejected()
+    public void OversizedPreviewIsConvertedWhenUploaded()
     {
-        var preview = _fs.WriteFile("preview.png", new string('x', (int)WorkshopPropertiesEditorViewModel.MaxPreviewBytes + 1));
+        var preview = _fs.WriteFile("preview.png", new string('x', (int)PreviewImages.MaxBytes + 1));
         _dialogs.PickFileResult = preview;
         var editor = Editor();
 
@@ -192,7 +193,25 @@ public class WorkshopPropertiesEditorTests
 
         Assert.IsTrue(editor.PreviewChanged);
         Assert.AreEqual("preview.png", editor.PreviewFile);
-        StringAssert.Contains(editor.Validate(), "too large");
+        Assert.IsNull(editor.Validate());
+        StringAssert.Contains(editor.PreviewInfo, "Shrunk");
+    }
+
+    [TestMethod]
+    public void SingleChoiceTagsReplaceEachOther()
+    {
+        var editor = Editor();
+        var addonType = editor.ChoiceTagGroups.Single(group => group.Name == "Addon Type");
+
+        addonType.Choice = "Maps";
+        addonType.Choice = "Developer Resources";
+
+        CollectionAssert.Contains(editor.Build().Tags!.ToList(), "Developer Resources");
+        CollectionAssert.DoesNotContain(editor.Build().Tags!.ToList(), "Maps");
+        Assert.IsFalse(editor.CheckboxTagGroups.Any(group => group.Name == "Length"));
+
+        addonType.Choice = WorkshopTagGroupOption.NoChoice;
+        Assert.IsFalse(addonType.Tags.Any(tag => tag.IsSelected));
     }
 
     [TestMethod]

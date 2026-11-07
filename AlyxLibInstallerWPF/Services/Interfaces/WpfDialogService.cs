@@ -16,13 +16,18 @@ public class WpfDialogService : WpfFolderPickerService, IDialogService
     public WpfDialogService() { }
     public WpfDialogService(Window owner) => _owner = owner;
 
-    public async Task<DialogResult> ShowCustomPopup<T>(T content, DialogConfiguration config, Panel? panel = null) where T : UIElement
+    public Task<DialogResult> ShowCustomPopup<T>(T content, DialogConfiguration config, Panel? panel = null) where T : UIElement =>
+        ShowCustomPopup(content, config, panel, null);
+
+    /// <param name="setup">Adjusts the dialog before it's shown, e.g. to bind its buttons to the content.</param>
+    private async Task<DialogResult> ShowCustomPopup<T>(T content, DialogConfiguration config, Panel? panel, Action<ContentDialogWpfNew>? setup) where T : UIElement
     {
         var dialog = new ContentDialogWpfNew
         {
             DialogContent = content,
             DataContext = config
         };
+        setup?.Invoke(dialog);
 
         panel ??= _owner?.Content as Panel;
 
@@ -55,7 +60,9 @@ public class WpfDialogService : WpfFolderPickerService, IDialogService
 
         var dialog = new PromptDialog() { DataContext = vm };
 
-        var result = await ShowCustomPopup(dialog, config);
+        // The primary button confirms the text, so it's only enabled while the text is valid
+        var result = await ShowCustomPopup(dialog, config, null, contentDialog =>
+            contentDialog.PrimaryButton.SetBinding(UIElement.IsEnabledProperty, new System.Windows.Data.Binding(nameof(PromptDialogViewModel.TextBoxTextIsValid)) { Source = vm }));
 
         return new DialogResponse(
             result,

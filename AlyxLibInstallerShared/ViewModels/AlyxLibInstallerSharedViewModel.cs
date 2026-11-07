@@ -15,6 +15,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 {
     private readonly IDialogService _dialogService;
     private readonly ILogger? _logger;
+    private readonly IPreviewImageConverter? _previewConverter;
     private readonly AddonInstallService _installService;
     private readonly AlyxLibUpdateService _updateService;
 
@@ -45,7 +46,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
     public partial string LoadingOverlayText { get; set; } = "";
     private void SetLoading(bool isLoading, string text = "") => (IsCurrentlyLoading, LoadingOverlayText) = (isLoading, text);
 
-    public AlyxLibInstallerSharedViewModel(IDialogService dialogService, ILogger? logger = null)
+    public AlyxLibInstallerSharedViewModel(IDialogService dialogService, ILogger? logger = null, IPreviewImageConverter? previewConverter = null)
     {
         Settings = SettingsManager.Settings;
         Settings.PropertyChanged += (s, e) =>
@@ -61,6 +62,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
 
         _dialogService = dialogService;
         _logger = logger;
+        _previewConverter = previewConverter;
         AlyxLibInstance.Logger = _logger;
 
         _installService = new AddonInstallService(_dialogService, new AddonFileOperations(AlyxLibInstance.FileManager), _logger);

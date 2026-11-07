@@ -1,6 +1,7 @@
 ﻿namespace AlyxLib.Workshop;
 
-public record WorkshopTagGroup(string Name, IReadOnlyList<string> Tags);
+/// <param name="SingleChoice">Only one of the group's tags is chosen, like the Workshop tools' dropdowns.</param>
+public record WorkshopTagGroup(string Name, IReadOnlyList<string> Tags, bool SingleChoice = false);
 
 /// <summary>
 /// The Half-Life: Alyx Workshop tags, as offered by the Workshop tools.
@@ -14,7 +15,7 @@ public static class WorkshopTags
 
     public static readonly IReadOnlyList<WorkshopTagGroup> Groups =
     [
-        new("Addon Type", ["Maps", "Game Modifications & Replacements", "Developer Resources", "Other Addon Type"]),
+        new("Addon Type", ["Maps", "Game Modifications & Replacements", "Developer Resources", "Other Addon Type"], SingleChoice: true),
         new("Game Content", ["Asset Packs", "Prefabs", "NPCs", "Weapons", "Models", "Textures", "Sounds", "Particles",
             "Quality Of Life", "Custom Mechanics", "Scripts & AI", "Miscellaneous Content"]),
         new("Gameplay Genre", ["HL:A Campaign-like", "Action", "Puzzle", "Showcase & Scenic", "Platforming & Climb", "Adventure",
@@ -25,7 +26,7 @@ public static class WorkshopTags
             "Horror", "Sci-fi", "Pop Culture", "Comedy", "Fantasy", "Musical", "Crime", "Historical", "Seasonal", "Training",
             "Educational", "Other Theme"]),
         new("Enemies", ["Combine Soldiers", "Headcrabs", "Zombies", "Antlions", "Jeff", "Friendly Companions", "Other Enemies"]),
-        new("Length", ["Short (less than 20m)", "Long (an hour)", "Campaign (2 hours or more)", "Infinite / Looped"]),
+        new("Length", ["Short (less than 20m)", "Long (an hour)", "Campaign (2 hours or more)", "Infinite / Looped"], SingleChoice: true),
         new("Difficulty", ["No Combat", "Beginner", "Hardcore"]),
     ];
 }

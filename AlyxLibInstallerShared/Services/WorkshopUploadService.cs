@@ -32,6 +32,7 @@ public enum WorkshopUploadResult
 /// <param name="connect">Opens a Workshop connection, which is closed when the upload ends.</param>
 /// <param name="setLoading">Shows or hides the loading overlay with a status message.</param>
 /// <param name="openUrl">Opens a web page, e.g. the Workshop legal agreement.</param>
+/// <param name="previewConverter">Converts preview images Steam won't take as they are.</param>
 public class WorkshopUploadService(
     IDialogService dialogService,
     Func<IWorkshopClient> connect,
@@ -40,7 +41,8 @@ public class WorkshopUploadService(
     Action<bool, string> setLoading,
     ILogger? logger = null,
     Action<Exception>? logException = null,
-    Action<string>? openUrl = null)
+    Action<string>? openUrl = null,
+    IPreviewImageConverter? previewConverter = null)
 {
     public const string LegalAgreementUrl = "https://steamcommunity.com/sharedfiles/workshoplegalagreement";
 
@@ -107,12 +109,15 @@ public class WorkshopUploadService(
                 }
             }
 
-            var changeNote = await AskForChangeNotesAsync(remote.Title, "Upload");
+            await OfferWorkshopInitRenameAsync(request, properties.ItemId);
+
+            var files = GetFiles(request);
+            var changeNote = await AskForChangeNotesAsync(remote.Title, "Upload", files);
             if (changeNote == null)
                 return WorkshopUploadResult.Cancelled;
 
             setLoading(true, "Packing addon...");
-            await Task.Run(() => Pack(GetFiles(request), properties.ItemId));
+            await Task.Run(() => Pack(files, properties.ItemId));
 
             var update = new WorkshopItemUpdate(properties.ItemId)
             {
@@ -120,7 +125,7 @@ public class WorkshopUploadService(
                 ChangeNote = changeNote,
                 // e.g. an item created here whose first upload failed
                 PreviewFile = string.IsNullOrEmpty(remote.PreviewUrl) && properties.PreviewFile != null
-                    ? WorkshopProperties.ResolvePath(request.ContentPath, properties.PreviewFile)
+                    ? PreviewImages.PrepareForUpload(WorkshopProperties.ResolvePath(request.ContentPath, properties.PreviewFile), previewConverter)
                     : null
             };
             if (updateProperties)
@@ -181,18 +186,6 @@ public class WorkshopUploadService(
     /// </summary>
     private async Task<WorkshopUploadResult> CreateAndUploadAsync(WorkshopUploadRequest request, WorkshopProperties properties)
     {
-        var editor = new WorkshopPropertiesEditorViewModel(properties, request.ContentPath, null, null, dialogService);
-        if (!await WorkshopPropertiesService.ShowEditorAsync(dialogService, editor, "New Workshop Item", "Continue"))
-        {
-            logger?.LogDetail("Upload cancelled");
-            return WorkshopUploadResult.Cancelled;
-        }
-
-        // Saved now so they don't need entering again if the upload is cancelled
-        properties = editor.Build();
-        properties.Save(request.ContentPath);
-        var description = editor.CurrentDescription;
-
         ulong? createdItemId = null;
         try
         {
@@ -206,9 +199,21 @@ public class WorkshopUploadService(
             // Checked now so a missing vpk.exe doesn't leave an empty item on the Workshop
             packer.EnsureAvailable();
 
-            var changeNote = await AskForChangeNotesAsync(properties.Title!, "Create and Upload");
-            if (changeNote == null)
+            var editor = new WorkshopPropertiesEditorViewModel(properties, request.ContentPath, null, null, dialogService)
+            {
+                UploadSummary = DescribeFiles(files)
+            };
+            if (!await WorkshopPropertiesService.ShowEditorAsync(dialogService, editor, "New Workshop Item", "Create and Upload"))
+            {
+                logger?.LogDetail("Upload cancelled");
                 return WorkshopUploadResult.Cancelled;
+            }
+
+            // Saved now so they don't need entering again if the upload fails
+            properties = editor.Build();
+            properties.Save(request.ContentPath);
+            var description = editor.CurrentDescription;
+            var preview = PreviewImages.PrepareForUpload(WorkshopProperties.ResolvePath(request.ContentPath, properties.PreviewFile!), previewConverter);
 
             setLoading(true, "Connecting to Steam...");
             using var client = connect();
@@ -220,6 +225,10 @@ public class WorkshopUploadService(
             properties.Save(request.ContentPath);
             logger?.LogInfo($"Created Workshop item {created.ItemId} for {request.AddonName}");
 
+            setLoading(false, "");
+            if (await OfferWorkshopInitRenameAsync(request, created.ItemId))
+                files = GetFiles(request);
+
             setLoading(true, "Packing addon...");
             await Task.Run(() => Pack(files, created.ItemId));
             store.Save(new PublishData(created.ItemId, properties.Title!, request.AddonName, DateTimeOffset.Now));
@@ -227,8 +236,9 @@ public class WorkshopUploadService(
             var update = new WorkshopItemUpdate(created.ItemId)
             {
                 ContentFolder = store.GetItemFolder(created.ItemId),
-                ChangeNote = changeNote,
-                PreviewFile = WorkshopProperties.ResolvePath(request.ContentPath, properties.PreviewFile!)
+                // The Workshop tools' note for a new item
+                ChangeNote = $"Created {properties.Title}.",
+                PreviewFile = preview
             }.WithAllProperties(properties, description);
 
             var result = await SubmitAsync(client, update);
@@ -249,12 +259,12 @@ public class WorkshopUploadService(
     }
 
     /// <returns>The trimmed change notes, "" if there are none, or null if the user cancelled.</returns>
-    private async Task<string?> AskForChangeNotesAsync(string title, string uploadText)
+    private async Task<string?> AskForChangeNotesAsync(string title, string uploadText, IReadOnlyList<PackFile> files)
     {
         var response = await dialogService.ShowTextPopup(new DialogConfiguration
         {
             Title = $"Upload {title}",
-            Message = "Describe what changed in this update. Change notes are shown on the item's Workshop page.",
+            Message = $"Uploading {DescribeFiles(files)}.\n\nDescribe what changed in this update. Change notes are shown on the item's Workshop page.",
             HasTextBox = true,
             TextBoxIsMultiline = true,
             TextBoxPlaceholderText = "Change notes (optional)",
@@ -324,6 +334,49 @@ public class WorkshopUploadService(
                 break;
         }
         return WorkshopUploadResult.Failed;
+    }
+
+    /// <summary>
+    /// Offers to rename AlyxLib's Workshop init script to the item's ID, which is how it knows the addon is running from the Workshop.
+    /// It's renamed in the content folder and, if it isn't linked there, the game folder, so the upload includes it.
+    /// </summary>
+    /// <returns>True if it was renamed.</returns>
+    private async Task<bool> OfferWorkshopInitRenameAsync(WorkshopUploadRequest request, ulong itemId)
+    {
+        var placeholders = new[] { request.ContentPath, request.GamePath }
+            .Select(root => Path.Combine(root, WorkshopInitFolder, WorkshopInitPlaceholder))
+            .Where(File.Exists)
+            .ToList();
+        var renamed = $"{itemId}.lua";
+        if (placeholders.Count == 0 || placeholders.Any(path => File.Exists(Path.Combine(Path.GetDirectoryName(path)!, renamed))))
+            return false;
+
+        var response = await dialogService.ShowTextPopup(new DialogConfiguration
+        {
+            Title = "Rename Workshop Init Script",
+            Message = $"This addon has AlyxLib's Workshop init script, {WorkshopInitFolder}/{WorkshopInitPlaceholder}.\n\n" +
+                $"It needs renaming to {renamed}, this item's ID, to run for players who subscribe. Rename it before uploading?",
+            PrimaryButtonText = "Rename",
+            CancelButtonText = "Not now",
+            Width = 450
+        });
+        if (response.Result != DialogResult.Primary)
+            return false;
+
+        // A linked scripts folder means the game folder's copy is already renamed
+        foreach (var path in placeholders.Where(File.Exists))
+            File.Move(path, Path.Combine(Path.GetDirectoryName(path)!, renamed));
+        logger?.LogInfo($"Renamed {WorkshopInitPlaceholder} to {renamed}");
+        return true;
+    }
+
+    private const string WorkshopInitFolder = "scripts/vscripts/mods/init";
+    private const string WorkshopInitPlaceholder = "0000000000.lua";
+
+    private static string DescribeFiles(IReadOnlyList<PackFile> files)
+    {
+        var size = files.Sum(file => new FileInfo(file.SourcePath).Length);
+        return $"{files.Count} file{(files.Count == 1 ? "" : "s")}, {Utils.FormatFileSize(size)}";
     }
 
     private IReadOnlyList<PackFile> GetFiles(WorkshopUploadRequest request) =>

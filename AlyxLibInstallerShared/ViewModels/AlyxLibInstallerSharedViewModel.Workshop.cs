@@ -33,7 +33,8 @@ public partial class AlyxLibInstallerSharedViewModel
             WorkshopItemStore.ForInstalledGame(),
             VpkPacker.ForInstalledGame(),
             SetLoading,
-            _logger);
+            _logger,
+            previewConverter: _previewConverter);
 
         var request = new WorkshopUploadRequest(
             SelectedAddon.Name,
@@ -76,7 +77,7 @@ public partial class AlyxLibInstallerSharedViewModel
     }
 
     private WorkshopPropertiesService CreatePropertiesService() =>
-        new(_dialogService, SteamWorkshopClient.Connect, WorkshopItemStore.ForInstalledGame(), SetLoading, _logger);
+        new(_dialogService, SteamWorkshopClient.Connect, WorkshopItemStore.ForInstalledGame(), SetLoading, _logger, previewConverter: _previewConverter);
 
     [RelayCommand]
     private void OpenWorkshopPage()

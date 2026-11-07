@@ -1,4 +1,5 @@
 ﻿using AlyxLib.Workshop;
+using AlyxLibInstallerShared.Services;
 using AlyxLibInstallerShared.Services.Dialog;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -15,7 +16,43 @@ public partial class WorkshopTagOption(string name, bool isSelected) : Observabl
     public partial bool IsSelected { get; set; } = isSelected;
 }
 
-public record WorkshopTagGroupOption(string Name, IReadOnlyList<WorkshopTagOption> Tags);
+public partial class WorkshopTagGroupOption : ObservableObject
+{
+    public const string NoChoice = "None";
+
+    public string Name { get; }
+    public IReadOnlyList<WorkshopTagOption> Tags { get; }
+
+    /// <summary>
+    /// Only one tag is chosen, from <see cref="Choices"/>.
+    /// </summary>
+    public bool SingleChoice { get; }
+
+    public IReadOnlyList<string> Choices { get; }
+
+    /// <summary>
+    /// The chosen tag of a single choice group, or <see cref="NoChoice"/>. Choosing one clears the group's others.
+    /// </summary>
+    public string Choice
+    {
+        get => Tags.FirstOrDefault(tag => tag.IsSelected)?.Name ?? NoChoice;
+        set
+        {
+            foreach (var tag in Tags)
+                tag.IsSelected = tag.Name == value;
+        }
+    }
+
+    public WorkshopTagGroupOption(string name, IReadOnlyList<WorkshopTagOption> tags, bool singleChoice = false)
+    {
+        Name = name;
+        Tags = tags;
+        SingleChoice = singleChoice;
+        Choices = [NoChoice, .. tags.Select(tag => tag.Name)];
+        foreach (var tag in tags)
+            tag.PropertyChanged += (_, _) => OnPropertyChanged(nameof(Choice));
+    }
+}
 
 public record RequiredItemOption(ulong ItemId)
 {
@@ -51,10 +88,9 @@ public partial class WorkshopPropertiesEditorViewModel : ObservableObject
 {
     public const int MaxTitleLength = 128;
     public const int MaxDescriptionLength = 8000;
-    public const long MaxPreviewBytes = 1024 * 1024;
 
     private const string TextFileFilter = "Text files (*.txt;*.md)|*.txt;*.md|All files (*.*)|*.*";
-    private const string ImageFileFilter = "Images (*.png;*.jpg;*.jpeg;*.gif)|*.png;*.jpg;*.jpeg;*.gif";
+    private const string ImageFileFilter = "Images (*.png;*.jpg;*.jpeg;*.gif;*.bmp)|*.png;*.jpg;*.jpeg;*.gif;*.bmp";
 
     private readonly string _contentPath;
     private readonly IFolderPickerService _picker;
@@ -103,11 +139,24 @@ public partial class WorkshopPropertiesEditorViewModel : ObservableObject
 
     public IReadOnlyList<WorkshopTagGroupOption> TagGroups { get; }
 
+    /// <summary>
+    /// Groups shown as dropdowns, like Addon Type.
+    /// </summary>
+    public IEnumerable<WorkshopTagGroupOption> ChoiceTagGroups => TagGroups.Where(group => group.SingleChoice);
+
+    /// <summary>
+    /// Groups shown as checkboxes.
+    /// </summary>
+    public IEnumerable<WorkshopTagGroupOption> CheckboxTagGroups => TagGroups.Where(group => !group.SingleChoice);
+
+    /// <summary>
+    /// The checkbox tags chosen, since the dropdowns show their own.
+    /// </summary>
     public string SelectedTagsSummary
     {
         get
         {
-            var selected = SelectedTags.ToList();
+            var selected = CheckboxTagGroups.SelectMany(group => group.Tags).Where(tag => tag.IsSelected).Select(tag => tag.Name).ToList();
             return selected.Count == 0 ? "None" : string.Join(", ", selected);
         }
     }
@@ -126,13 +175,43 @@ public partial class WorkshopPropertiesEditorViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PreviewSource))]
+    [NotifyPropertyChangedFor(nameof(PreviewInfo))]
     public partial string? PreviewFile { get; set; }
+
+    /// <summary>
+    /// The chosen preview's name and size, or null if there isn't one.
+    /// </summary>
+    public string? PreviewInfo
+    {
+        get
+        {
+            if (PreviewFile == null)
+                return null;
+            var preview = new FileInfo(WorkshopProperties.ResolvePath(_contentPath, PreviewFile));
+            if (!preview.Exists)
+                return $"{preview.Name} wasn't found";
+            var info = $"{preview.Name}, {Utils.FormatFileSize(preview.Length)}";
+            return PreviewImages.NeedsConverting(preview.FullName) ? $"{info}. Shrunk to fit 1 MB when uploaded." : info;
+        }
+    }
+
+    /// <summary>
+    /// What will be uploaded, e.g. "120 files, 3.4 MB", or null when the editor isn't part of an upload.
+    /// </summary>
+    [ObservableProperty]
+    public partial string? UploadSummary { get; set; }
 
     /// <summary>
     /// The preview was changed in this editor, so it's uploaded when saving.
     /// </summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsPreviewSaveNote))]
     public partial bool PreviewChanged { get; private set; }
+
+    /// <summary>
+    /// A new preview for an existing item is uploaded as soon as the properties are saved.
+    /// </summary>
+    public bool ShowsPreviewSaveNote => PreviewChanged && !IsNewItem;
 
     /// <summary>
     /// The preview to show: the chosen file, or the Workshop's current image.
@@ -201,7 +280,7 @@ public partial class WorkshopPropertiesEditorViewModel : ObservableObject
         bool IsSelected(string tag) => selected.Contains(tag, StringComparer.OrdinalIgnoreCase);
 
         var groups = WorkshopTags.Groups
-            .Select(group => new WorkshopTagGroupOption(group.Name, [.. group.Tags.Select(tag => new WorkshopTagOption(tag, IsSelected(tag)))]))
+            .Select(group => new WorkshopTagGroupOption(group.Name, [.. group.Tags.Select(tag => new WorkshopTagOption(tag, IsSelected(tag)))], group.SingleChoice))
             .ToList();
 
         // Tags added another way, e.g. on the Workshop page, are kept so they can be chosen again
@@ -276,8 +355,6 @@ public partial class WorkshopPropertiesEditorViewModel : ObservableObject
             var preview = new FileInfo(WorkshopProperties.ResolvePath(_contentPath, PreviewFile));
             if (!preview.Exists)
                 return $"The preview image can't be found: {preview.FullName}";
-            if (preview.Length > MaxPreviewBytes)
-                return "The preview image is too large. Steam allows images up to 1 MB.";
         }
 
         return null;

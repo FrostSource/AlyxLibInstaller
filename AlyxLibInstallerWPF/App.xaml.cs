@@ -1,9 +1,11 @@
 ﻿using AlyxLib.Logging;
 using AlyxLibInstallerShared;
 using AlyxLibInstallerShared.Models;
+using AlyxLibInstallerShared.Services;
 using AlyxLibInstallerShared.Services.Dialog;
 using AlyxLibInstallerShared.ViewModels;
 using AlyxLibInstallerWPF.Extensions;
+using AlyxLibInstallerWPF.Services;
 using AlyxLibInstallerWPF.Services.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
@@ -53,6 +55,7 @@ public partial class App : Application
         services.AddTransient<AlyxLibInstallerSharedViewModel>();
         services.AddScoped<IDialogService>(sp => new WpfDialogService(main));
         services.AddScoped<ILogger>(sp => new AlyxLibInstallerLogger(main));
+        services.AddSingleton<IPreviewImageConverter, WpfPreviewImageConverter>();
 
         Services = services.BuildServiceProvider();
 
