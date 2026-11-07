@@ -582,7 +582,7 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
         if (Settings.RememberLastAddon)
         {
             if (HLA.TryGetAddon(Settings.LastAddon, out LocalAddon addon))
-                SelectAddon(HLA.GetAddon(Settings.LastAddon));
+                SelectAddon(addon);
             else
                 _logger?.LogWarning($"Could not find addon '{Settings.LastAddon}'");
         }
