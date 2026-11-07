@@ -38,10 +38,11 @@ public class FileGlobServiceTests
         var matches = service.GetMatchingFileActions(_rootPath);
 
         CollectionAssert.AreEqual(
-            [
+            new[]
+            {
                 new FileRemovalMatch("delete/me.txt", FileRemovalAction.Delete),
                 new FileRemovalMatch("temp/me.txt", FileRemovalAction.TemporaryMove)
-            ],
+            },
             matches.ToArray());
     }
 
