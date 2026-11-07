@@ -304,9 +304,6 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
             _addonGameFolderMonitor.Renamed += (_, _) => OnPropertyChanged(nameof(FileRemovalCount));
         }
 
-        // The upload reminder belongs to the previously selected addon
-        AlyxLibRemovedFromAddonForUpload = false;
-
         SelectedAddon = addon;
 
         if (SelectedAddon == null)
@@ -315,6 +312,10 @@ public partial class AlyxLibInstallerSharedViewModel : ObservableRecipient
         ReloadAddonConfig();
 
         var addonHasAlyxLib = AlyxLibHelpers.AddonHasAlyxLib(SelectedAddon);
+
+        // Show the reinstall reminder if the addon is still in its removed for upload state, e.g. after a restart
+        AlyxLibRemovedFromAddonForUpload = FileManager.HasTemporarilyMovedUploadFiles(SelectedAddon)
+            || (SelectedAddonConfigFound && AddonConfig!.VScriptInstalled && !addonHasAlyxLib);
 
         if (Settings.RememberLastAddon)
             Settings.LastAddon = addon.Name;
