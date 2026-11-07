@@ -75,6 +75,65 @@ public class FileGlobServiceTests
         Assert.AreEqual("temp2", File.ReadAllText(Path.Combine(_rootPath, "nested", "temp2.txt")));
     }
 
+    [TestMethod]
+    public void ApplyRemovals_DoesNotFollowLinkedFolders()
+    {
+        // Simulates the shared AlyxLib scripts folder linked into an addon
+        var addonPath = Path.Combine(_rootPath, "addon");
+        var sharedPath = Path.Combine(_rootPath, "shared");
+        WriteFile("addon/scripts/own.lua");
+        WriteFile("shared/core.lua");
+        var linkPath = Path.Combine(addonPath, "scripts", "linked");
+        CreateJunction(linkPath, sharedPath);
+
+        try
+        {
+            var service = new FileGlobService(["scripts/**/*.lua"]);
+
+            CollectionAssert.AreEqual(
+                new[] { new FileRemovalMatch("scripts/own.lua", FileRemovalAction.Delete) },
+                service.GetMatchingFileActions(addonPath).ToArray());
+
+            service.ApplyRemovals(addonPath, Path.Combine(_rootPath, ".stash"));
+
+            Assert.IsFalse(File.Exists(Path.Combine(addonPath, "scripts", "own.lua")));
+            Assert.IsTrue(File.Exists(Path.Combine(sharedPath, "core.lua")));
+        }
+        finally
+        {
+            // Removes only the junction itself, recursive cleanup can't delete through it
+            Directory.Delete(linkPath);
+        }
+    }
+
+    [TestMethod]
+    public void GetMatchingFileActions_IgnoresPathsOutsideRoot()
+    {
+        WriteFile("addon/inside.txt");
+        WriteFile("outside.txt");
+
+        var service = new FileGlobService(["../outside.txt", "*.txt"]);
+
+        CollectionAssert.AreEqual(
+            new[] { new FileRemovalMatch("inside.txt", FileRemovalAction.Delete) },
+            service.GetMatchingFileActions(Path.Combine(_rootPath, "addon")).ToArray());
+    }
+
+    private static void CreateJunction(string linkPath, string targetPath)
+    {
+        // Junctions don't need admin rights or developer mode, unlike symlinks
+        var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "cmd.exe",
+            Arguments = $"/c mklink /J \"{linkPath}\" \"{targetPath}\"",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true
+        })!;
+        process.WaitForExit();
+        Assert.AreEqual(0, process.ExitCode, "Failed to create junction for test");
+    }
+
     private void WriteFile(string relativePath, string contents = "test")
     {
         var filePath = Path.Combine(_rootPath, relativePath);

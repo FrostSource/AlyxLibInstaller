@@ -100,6 +100,7 @@ public class FileGlobService
         }
 
         return [.. matchedFiles
+            .Where(pair => IsSafeToRemove(dir, pair.Key))
             .OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
             .Select(pair => new FileRemovalMatch(pair.Key, pair.Value))];
     }
@@ -187,6 +188,31 @@ public class FileGlobService
         }
 
         CleanupEmptyDirectories(temporaryStorageDir, temporaryStorageDir, deleteRoot: true);
+    }
+
+    /// <summary>
+    /// Checks that a matched file is inside <paramref name="rootDir"/> and isn't reached through a
+    /// symlinked or junctioned folder. Removing a file through a linked folder would remove the original,
+    /// e.g. the shared AlyxLib scripts linked into every addon.
+    /// </summary>
+    private static bool IsSafeToRemove(string rootDir, string relativePath)
+    {
+        var rootFullPath = Path.GetFullPath(rootDir).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var fullPath = Path.GetFullPath(Path.Combine(rootFullPath, relativePath));
+
+        if (!fullPath.StartsWith(rootFullPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var directory = Path.GetDirectoryName(fullPath);
+        while (directory != null && directory.Length > rootFullPath.Length)
+        {
+            if (new DirectoryInfo(directory).Attributes.HasFlag(FileAttributes.ReparsePoint))
+                return false;
+
+            directory = Path.GetDirectoryName(directory);
+        }
+
+        return true;
     }
 
     private static void CleanupEmptyDirectories(string? startPath, string rootPath, bool deleteRoot = false)
