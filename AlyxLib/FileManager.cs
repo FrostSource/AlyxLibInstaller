@@ -210,6 +210,9 @@ public class FileManager
         manifest.AddVariable("ModName", () => options.ModFolderName);
         manifest.AddVariable("AddonFolderName", () => addon.Name);
 
+        // Empty folders left after removing files are cleaned up, but never the addon folders themselves
+        manifest.ProtectedFolders = [addon.ContentPath, addon.GamePath];
+
         return true;
     }
 

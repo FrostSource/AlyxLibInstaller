@@ -204,6 +204,24 @@ namespace FileDeployment
         /// <param name="directoryName">The name of the directory up to which the path should be trimmed. The comparison is case-insensitive.</param>
         /// <returns>A string representing the trimmed path, starting from the segment immediately after the specified directory.
         /// If the directory is not found in the path, the original path is returned unchanged.</returns>
+        /// <summary>
+        /// Checks if two paths point to the same location, ignoring case and trailing separators.
+        /// </summary>
+        public static bool PathsAreEqual(string first, string second) =>
+            string.Equals(
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(first)),
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(second)),
+                StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Checks if <paramref name="path"/> is strictly inside <paramref name="folder"/>.
+        /// </summary>
+        public static bool IsInsideFolder(string path, string folder)
+        {
+            string folderPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder)) + Path.DirectorySeparatorChar;
+            return Path.GetFullPath(path).StartsWith(folderPath, StringComparison.OrdinalIgnoreCase);
+        }
+
         public static string TrimPathUpToDirectory(string path, string directoryName)
         {
             var parts = path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);

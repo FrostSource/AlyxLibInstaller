@@ -46,6 +46,12 @@ namespace FileDeployment
 
         public Dictionary<string, List<FileOperation>> Categories { get; set; } = new(StringComparer.OrdinalIgnoreCase);
         /// <summary>
+        /// Folders that are never removed when cleaning up empty folders after undeploying.
+        /// Empty parent folders are removed up to, but not including, these folders.
+        /// </summary>
+        [JsonIgnore]
+        public List<string> ProtectedFolders { get; set; } = [];
+        /// <summary>
         /// A list of variable names that point to a Func that returns a string for that variable
         /// </summary>
         public Dictionary<string, Func<string>> Variables { get; set; } = new(StringComparer.OrdinalIgnoreCase);
@@ -154,21 +160,8 @@ namespace FileDeployment
                             else if (Directory.Exists(deploymentPath)) { Directory.Delete(deploymentPath); }
                             Log(new LogEntry(operation, $"Removed path '{deploymentPath}'") { Type = LogEntryType.Info });
 
-                            // Remove empty parent folder
-                            if (!string.IsNullOrEmpty(containingFolder)
-                                && Path.GetPathRoot(containingFolder) != Path.GetFullPath(containingFolder)
-                                && Directory.GetFileSystemEntries(containingFolder).Length == 0)
-                            {
-                                try
-                                {
-                                    Directory.Delete(containingFolder);
-                                    Log(LogEntry.Info(operation, $"Removed empty parent folder '{containingFolder}'"));
-                                }
-                                catch (Exception ex)
-                                {
-                                    Log(LogEntry.Error(operation, $"Failed to remove empty parent folder '{containingFolder}'", ex));
-                                }
-                            }
+                            if (!string.IsNullOrEmpty(containingFolder))
+                                RemoveEmptyParentFolders(operation, containingFolder);
 
                             success++;
                         }
@@ -186,6 +179,48 @@ namespace FileDeployment
             }
 
             return new DeploymentResult(success, fail);
+        }
+
+        /// <summary>
+        /// Removes <paramref name="folder"/> if it is empty, then each parent that becomes empty, stopping at the
+        /// first protected folder containing it. Without a protected folder only <paramref name="folder"/> is removed.
+        /// Folders containing anything at all, including hidden files, and symlinked folders are never removed.
+        /// </summary>
+        /// <param name="onlyInsideProtectedFolder">If true, nothing is removed unless a protected folder contains <paramref name="folder"/>.</param>
+        internal void RemoveEmptyParentFolders(FileOperation operation, string folder, bool onlyInsideProtectedFolder = false)
+        {
+            string current = Path.GetFullPath(folder);
+            string? root = ProtectedFolders
+                .Select(Path.GetFullPath)
+                .FirstOrDefault(protectedFolder => FileUtils.IsInsideFolder(current, protectedFolder));
+
+            if (root == null && onlyInsideProtectedFolder)
+                return;
+
+            while (Path.GetPathRoot(current) != current
+                && Directory.Exists(current)
+                && !ProtectedFolders.Any(protectedFolder => FileUtils.PathsAreEqual(protectedFolder, current))
+                && !new DirectoryInfo(current).Attributes.HasFlag(FileAttributes.ReparsePoint)
+                && !Directory.EnumerateFileSystemEntries(current).Any())
+            {
+                try
+                {
+                    // Not recursive, so this fails rather than deleting anything created since the check
+                    Directory.Delete(current);
+                    Log(LogEntry.Info(operation, $"Removed empty parent folder '{current}'"));
+                }
+                catch (Exception ex)
+                {
+                    Log(LogEntry.Error(operation, $"Failed to remove empty parent folder '{current}'", ex));
+                    return;
+                }
+
+                string? parent = Path.GetDirectoryName(current);
+                if (root == null || parent == null || !FileUtils.IsInsideFolder(parent, root))
+                    return;
+
+                current = parent;
+            }
         }
 
         public bool TryUndeployCategory(string category, out DeploymentResult result, bool ignoreRemoveFlags = false)

@@ -23,6 +23,10 @@ namespace FileDeployment.Operations
             File.Delete(Source);
             //Console.WriteLine($"Deleting {Source}");
             Log(LogEntry.Success(this, $"Deleted file {Source} successfully"));
+
+            string? folder = Path.GetDirectoryName(Path.GetFullPath(Source));
+            if (folder != null)
+                Manifest?.RemoveEmptyParentFolders(this, folder, onlyInsideProtectedFolder: true);
             //}
             //catch (Exception ex)
             //{

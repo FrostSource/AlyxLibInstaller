@@ -223,6 +223,80 @@ public class DeploymentManifestTests
         Assert.AreEqual("doc", File.ReadAllText(Path.Combine(destination, "panoramadoc.js")));
     }
 
+    private DeploymentManifest DeployPanorama()
+    {
+        CreateAlyxLibFile("panorama/scripts/custom_game/panorama_lua.js", "lua");
+        CreateAlyxLibFile("panorama/scripts/custom_game/panoramadoc.js", "doc");
+
+        var manifest = CreateTempManifest();
+        manifest.DeployCategory("panorama");
+        return manifest;
+    }
+
+    [TestMethod()]
+    public void UndeployRemovesEmptyFoldersUpToProtectedFolderTest()
+    {
+        var manifest = DeployPanorama();
+        var content = Path.Combine(_root, "content");
+        manifest.ProtectedFolders = [content];
+
+        var result = manifest.UndeployCategory("panorama", ignoreRemoveFlags: true);
+
+        Assert.AreEqual(2, result.SuccessfulOperations);
+        Assert.IsFalse(Directory.Exists(Path.Combine(content, "panorama")));
+        Assert.IsTrue(Directory.Exists(content), "The protected folder should never be removed");
+    }
+
+    [TestMethod()]
+    public void UndeployKeepsFoldersWithHiddenFilesTest()
+    {
+        var manifest = DeployPanorama();
+        var content = Path.Combine(_root, "content");
+        manifest.ProtectedFolders = [content];
+
+        var hiddenFile = Path.Combine(content, "panorama", "user_file.txt");
+        File.WriteAllText(hiddenFile, "");
+        File.SetAttributes(hiddenFile, FileAttributes.Hidden);
+
+        manifest.UndeployCategory("panorama", ignoreRemoveFlags: true);
+
+        Assert.IsFalse(Directory.Exists(Path.Combine(content, "panorama", "scripts")));
+        Assert.IsTrue(File.Exists(hiddenFile));
+    }
+
+    [TestMethod()]
+    public void UndeployWithoutProtectedFolderOnlyRemovesImmediateParentTest()
+    {
+        var manifest = DeployPanorama();
+
+        manifest.UndeployCategory("panorama", ignoreRemoveFlags: true);
+
+        var scripts = Path.Combine(_root, "content", "panorama", "scripts");
+        Assert.IsFalse(Directory.Exists(Path.Combine(scripts, "custom_game")));
+        Assert.IsTrue(Directory.Exists(scripts));
+    }
+
+    [TestMethod()]
+    public void DeleteRemovesEmptyFoldersOnlyInsideProtectedFolderTest()
+    {
+        var manifest = CreateTempManifest();
+        var content = Path.Combine(_root, "content");
+        var soundevents = Path.Combine(content, "soundevents");
+        Directory.CreateDirectory(soundevents);
+        File.WriteAllText(Path.Combine(soundevents, "addon_template_soundevents.vsndevts"), "modified");
+
+        // Without a protected folder the emptied folder is left alone
+        manifest.Categories["sounds"].OfType<DeleteFileOperation>().First().ExecuteWithoutRules();
+        Assert.IsTrue(Directory.Exists(soundevents));
+
+        File.WriteAllText(Path.Combine(soundevents, "addon_template_soundevents.vsndevts"), "modified");
+        manifest.ProtectedFolders = [content];
+        manifest.Categories["sounds"].OfType<DeleteFileOperation>().First().ExecuteWithoutRules();
+
+        Assert.IsFalse(Directory.Exists(soundevents));
+        Assert.IsTrue(Directory.Exists(content));
+    }
+
     [TestMethod()]
     public void DeployCategoryWithMissingSourceFailsTest()
     {
