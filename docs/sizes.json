@@ -1,17 +1,17 @@
 {
-  "version": "v1.2.0",
+  "version": "v1.2.1",
   "min_size": 3468503,
   "max_size": 137523834,
   "files": [
     {
       "name": "AlyxLibInstaller-FD.exe",
       "size": 3468503,
-      "url": "https://github.com/FrostSource/AlyxLibInstaller/releases/download/v1.2.0/AlyxLibInstaller-FD.exe"
+      "url": "https://github.com/FrostSource/AlyxLibInstaller/releases/download/v1.2.1/AlyxLibInstaller-FD.exe"
     },
     {
       "name": "AlyxLibInstaller-SC.exe",
       "size": 137523834,
-      "url": "https://github.com/FrostSource/AlyxLibInstaller/releases/download/v1.2.0/AlyxLibInstaller-SC.exe"
+      "url": "https://github.com/FrostSource/AlyxLibInstaller/releases/download/v1.2.1/AlyxLibInstaller-SC.exe"
     }
   ]
 }
