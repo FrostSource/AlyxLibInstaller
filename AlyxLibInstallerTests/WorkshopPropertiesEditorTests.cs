@@ -23,7 +23,7 @@ public class WorkshopPropertiesEditorTests
     public void Cleanup() => _fs.Dispose();
 
     private static WorkshopItemDetails Remote(string title = "Resin Watch", string description = "Tracks resin", string[]? tags = null, ulong[]? requiredItems = null) =>
-        new(ItemId, title, description, WorkshopVisibility.Public, tags ?? ["Alyx Addon", "Scripts & AI", "Made up tag"],
+        new(ItemId, title, description, WorkshopVisibility.Public, tags ?? ["Alyx Addon", "Maps", "Short (less than 20m)", "Scripts & AI", "Made up tag"],
             requiredItems ?? [WorkshopProperties.AlyxLibItemId], "https://example.com/preview.png", DateTimeOffset.Now);
 
     private WorkshopPropertiesEditorViewModel Editor(WorkshopProperties? properties = null, WorkshopItemDetails? remote = null) =>
@@ -48,7 +48,7 @@ public class WorkshopPropertiesEditorTests
         var editor = Editor();
 
         Assert.AreEqual("Scripts & AI, Made up tag", editor.SelectedTagsSummary);
-        CollectionAssert.AreEquivalent(new[] { "Alyx Addon", "Scripts & AI", "Made up tag" }, editor.Build().Tags);
+        CollectionAssert.AreEquivalent(new[] { "Alyx Addon", "Maps", "Short (less than 20m)", "Scripts & AI", "Made up tag" }, editor.Build().Tags);
     }
 
     [TestMethod]
@@ -249,7 +249,8 @@ public class WorkshopPropertiesEditorTests
 
         Assert.IsTrue(editor.IsAlyxLibRequired);
         Assert.AreEqual("Offline", editor.RemoteError);
-        CollectionAssert.AreEqual(new[] { WorkshopTags.AlyxAddon }, editor.Build().Tags);
+        // Addon Type and Length start on their first option, like the Workshop tools
+        CollectionAssert.AreEqual(new[] { WorkshopTags.AlyxAddon, "Maps", "Short (less than 20m)" }, editor.Build().Tags);
     }
 
     [TestMethod]

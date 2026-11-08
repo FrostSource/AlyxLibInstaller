@@ -29,8 +29,8 @@ public partial class WorkshopTagGroupOption : ObservableObject
     public IReadOnlyList<string> Choices { get; }
 
     /// <summary>
-    /// The chosen tag of a single choice group, or null before one is chosen. Choosing one clears the group's others.
-    /// Like the Workshop tools, a choice can be changed but not cleared.
+    /// The chosen tag of a single choice group. Choosing one clears the group's others.
+    /// Like the Workshop tools, there's always one chosen, the first by default.
     /// </summary>
     public string? Choice
     {
@@ -50,6 +50,8 @@ public partial class WorkshopTagGroupOption : ObservableObject
         Tags = tags;
         SingleChoice = singleChoice;
         Choices = [.. tags.Select(tag => tag.Name)];
+        if (singleChoice && !tags.Any(tag => tag.IsSelected))
+            tags[0].IsSelected = true;
         foreach (var tag in tags)
             tag.PropertyChanged += (_, _) => OnPropertyChanged(nameof(Choice));
     }

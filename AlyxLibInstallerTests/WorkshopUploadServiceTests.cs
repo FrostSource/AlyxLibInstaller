@@ -368,7 +368,7 @@ public class WorkshopUploadServiceTests
         Assert.AreEqual("Resin Watch", update.Title);
         Assert.AreEqual("Tracks resin", update.Description);
         Assert.AreEqual(WorkshopVisibility.Private, update.Visibility);
-        CollectionAssert.AreEqual(new[] { WorkshopTags.AlyxAddon }, update.Tags!.ToArray());
+        CollectionAssert.AreEqual(new[] { WorkshopTags.AlyxAddon, "Maps", "Short (less than 20m)" }, update.Tags!.ToArray());
         CollectionAssert.AreEqual(new[] { WorkshopProperties.AlyxLibItemId }, update.RequiredItems!.ToArray());
         Assert.AreEqual(Path.GetFullPath(_fs.PathOf("content/preview.png")), update.PreviewFile);
         Assert.IsTrue(File.Exists(_store.GetVpkPath(_client.CreatedItemId)));
